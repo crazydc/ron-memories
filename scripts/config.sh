@@ -2,29 +2,34 @@
 # Ron Memory - Configuration Loader
 
 load_config() {
-    # Find workspace
-    WORKSPACE=""
-    if [ -n "$OPENCLAW_WORKSPACE" ]; then
-        WORKSPACE="$OPENCLAW_WORKSPACE"
-    elif [ -n "$HOME" ]; then
-        WORKSPACE="$HOME/.openclaw/workspace"
+    # Priority: environment variables > .env file > examples
+    # This allows override via env vars for testing
+    
+    # Only load from file if env vars not already set
+    if [ -z "$UPSTASH_REDIS_URL" ] && [ -z "$UPSTASH_REDIS_REST_URL" ]; then
+        if [ -n "$HOME" ] && [ -f "$HOME/.openclaw/.env.ron-memory" ]; then
+            . "$HOME/.openclaw/.env.ron-memory"
+        elif [ -f "/root/.openclaw/.env.ron-memory" ]; then
+            . "/root/.openclaw/.env.ron-memory"
+        elif [ -n "$OPENCLAW_WORKSPACE" ] && [ -f "$OPENCLAW_WORKSPACE/.env.ron-memory" ]; then
+            . "$OPENCLAW_WORKSPACE/.env.ron-memory"
+        elif [ -f "/root/.openclaw/workspace/.env.ron-memory" ]; then
+            . "/root/.openclaw/workspace/.env.ron-memory"
+        fi
     fi
     
-    # Check for env file in multiple locations
-    if [ -n "$WORKSPACE" ] && [ -f "$WORKSPACE/.env.ron-memory" ]; then
-        . "$WORKSPACE/.env.ron-memory"
-    elif [ -n "$HOME" ] && [ -f "$HOME/.openclaw/.env.ron-memory" ]; then
-        . "$HOME/.openclaw/.env.ron-memory"
-    elif [ -f "/root/.openclaw/workspace/.env.ron-memory" ]; then
-        . "/root/.openclaw/workspace/.env.ron-memory"
-    fi
-    
-    # Fall back to environment variables
-    if [ -z "$REDIS_URL" ] && [ -n "$UPSTASH_REDIS_URL" ]; then
+    # Set REDIS_URL from env if present
+    if [ -n "$UPSTASH_REDIS_URL" ]; then
         REDIS_URL="$UPSTASH_REDIS_URL"
+    elif [ -n "$UPSTASH_REDIS_REST_URL" ]; then
+        REDIS_URL="$UPSTASH_REDIS_REST_URL"
     fi
-    if [ -z "$REDIS_TOKEN" ] && [ -n "$UPSTASH_REDIS_TOKEN" ]; then
+    
+    # Set REDIS_TOKEN from env if present  
+    if [ -n "$UPSTASH_REDIS_TOKEN" ]; then
         REDIS_TOKEN="$UPSTASH_REDIS_TOKEN"
+    elif [ -n "$UPSTASH_REDIS_REST_TOKEN" ]; then
+        REDIS_TOKEN="$UPSTASH_REDIS_REST_TOKEN"
     fi
     
     if [ -z "$REDIS_URL" ] || [ -z "$REDIS_TOKEN" ]; then
@@ -34,10 +39,12 @@ load_config() {
     fi
     
     # Local cache location
-    if [ -n "$WORKSPACE" ]; then
-        MEMORY_DIR="$WORKSPACE/memory"
-    else
+    if [ -n "$OPENCLAW_WORKSPACE" ]; then
+        MEMORY_DIR="$OPENCLAW_WORKSPACE/memory"
+    elif [ -n "$HOME" ]; then
         MEMORY_DIR="$HOME/.openclaw/workspace/memory"
+    else
+        MEMORY_DIR="/root/.openclaw/workspace/memory"
     fi
     MEMORY_FILE="${RON_MEMORY_FILE:-$MEMORY_DIR/ron-memory.md}"
     

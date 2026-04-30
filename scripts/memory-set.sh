@@ -22,14 +22,36 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 REDIS_KEY="ron:user:$KEY"
 
 # Save to Redis - Upstash REST API uses /set/key endpoint
-RESPONSE=$(curl -s -X POST "$REDIS_URL/set/$REDIS_KEY" \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$REDIS_URL/set/$REDIS_KEY" \
     -H "Authorization: $REDIS_TOKEN" \
     -H "Content-Type: application/json" \
     -d "{\"value\": \"$VALUE\", \"timestamp\": \"$TIMESTAMP\"}")
 
-# Check if Redis write succeeded
-if echo "$RESPONSE" | grep -q '"error"'; then
-    echo "ERROR: Failed to write to Redis: $RESPONSE"
+# Extract HTTP status code (last line)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+RESPONSE_BODY=$(echo "$RESPONSE" | head -n-1)
+
+# Check for network/curl errors
+if [ "$HTTP_CODE" = "000" ]; then
+    echo "ERROR: Could not connect to Redis - check URL and credentials"
+    exit 1
+fi
+
+# Check HTTP status
+if [ "$HTTP_CODE" -ge 400 ]; then
+    echo "ERROR: Redis returned HTTP $HTTP_CODE: $RESPONSE_BODY"
+    exit 1
+fi
+
+# Check if Redis returned an error
+if echo "$RESPONSE_BODY" | grep -q '"error"'; then
+    echo "ERROR: Failed to write to Redis: $RESPONSE_BODY"
+    exit 1
+fi
+
+# Verify the write actually worked (result should not be null)
+if echo "$RESPONSE_BODY" | grep -q '"result":null'; then
+    echo "ERROR: Write failed - check credentials. Response: $RESPONSE_BODY"
     exit 1
 fi
 
