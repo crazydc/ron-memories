@@ -27,6 +27,20 @@ Cross-session memory using Upstash Redis with local file caching.
 | [scripts/memory-delete.sh](./scripts/memory-delete.sh) | Delete a memory |
 | [scripts/memory-sync.sh](./scripts/memory-sync.sh) | Sync Redis → local file |
 
+## Key Namespace Structure
+
+See [NAMESPACE.md](./NAMESPACE.md) for a comprehensive guide to organizing memory keys. Key prefixes include:
+
+- `user:*` — Your personal data
+- `contact:{name}:*` — People you know
+- `family:{name}:*` — Family members
+- `vehicle:{name}:*` — Vehicles
+- `project:{name}:*` — Projects
+- `goal:{id}:*` — Goals and milestones
+- `pref:{category}:*` — Preferences
+- `service:{name}:*` — Online accounts
+- `agent:{name}:*` — AI agent configuration
+
 ## How It Works
 
 1. **Write**: Saves to both Redis AND local `memory/ron-memory.md`
