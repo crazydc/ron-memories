@@ -10,10 +10,6 @@ Cross-session memory using Upstash Redis with local file caching.
 ## Quick Start
 
 ```bash
-# Configure (see references/.env.example)
-export UPSTASH_REDIS_URL=https://your-db.upstash.io
-export UPSTASH_REDIS_TOKEN=your-token
-
 # Save a memory
 ./scripts/memory-set.sh favorite_color blue
 
@@ -37,6 +33,66 @@ export UPSTASH_REDIS_TOKEN=your-token
 2. **Read**: From local file (fast)
 3. **Delete**: Removes from both
 
+## Setup
+
+### Step 1: Create Upstash Database
+
+1. Go to https://upstash.com
+2. Sign up (email + password)
+3. Click **Create Database**
+4. Enter a name (e.g., "JeffMemory")
+5. Select region closest to you
+6. Choose **Free** tier (or upgrade if needed)
+7. Click **Create**
+
+### Step 2: Get Credentials
+
+1. Click on your new database
+2. Scroll to **Connect** section
+3. Copy the **REST URL** (looks like `https://xxx.upstash.io`)
+4. Copy the **REST Token** (long string starting with `gQ...`)
+
+**Important:** Make sure "Read-Only Token" is NOT checked — use the default token.
+
+### Step 3: Configure
+
+Create `.env.ron-memory` in your workspace:
+
+```bash
+UPSTASH_REDIS_URL=https://your-db.upstash.io
+UPSTASH_REDIS_TOKEN=your-token
+```
+
+Or export as environment variables:
+
+```bash
+export UPSTASH_REDIS_URL=https://your-db.upstash.io
+export UPSTASH_REDIS_TOKEN=your-token
+```
+
+### Step 4: Enable in OpenClaw
+
+Add to `openclaw.json`:
+
+```json
+{
+  "skills": {
+    "entries": {
+      "ron-memory": {
+        "enabled": true
+      }
+    }
+  }
+}
+```
+
+### Step 5: Test
+
+```bash
+./scripts/memory-set.sh test "Hello World"
+./scripts/memory-get.sh test
+```
+
 ## Configuration
 
 See [references/.env.example](./references/.env.example)
@@ -44,9 +100,3 @@ See [references/.env.example](./references/.env.example)
 Environment variables:
 - `UPSTASH_REDIS_URL` / `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_TOKEN` / `UPSTASH_REDIS_REST_TOKEN`
-
-## Setup for OpenClaw
-
-1. Enable skill in openclaw.json: `"ron-memory": {"enabled": true}`
-2. Copy `.env.ron-memory` to workspace root
-3. Run scripts from `/root/.openclaw/skills/ron-memory/scripts/`
