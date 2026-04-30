@@ -78,9 +78,9 @@ This is required so agents are aware of the memory system and read it on startup
 
 For each agent workspace, update:
 
-1. **AGENTS.md** - Add to startup sequence:
+1. **AGENTS.md** - Add to startup sequence (early - before responding to user):
    ```
-   6. Read SHARED_MEMORY.md (if exists) - shared memory info
+   4. Read ron-memory shared data — run `memory-read.sh` or read `memory/ron-memory.md` for cross-session facts (birthdays, preferences, family info, etc.)
    ```
 
 2. **SOUL.md** - Add capability note:
