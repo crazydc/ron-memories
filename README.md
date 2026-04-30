@@ -10,17 +10,38 @@ Gives your AI agents persistent memory across sessions — they remember facts, 
 - **Reads memories** instantly from local cache
 - **Syncs** Redis ↔ local file for reliability
 - **Triggers automatically** on phrases like "remember that...", "don't forget...", "note that..."
+- **Multi-agent hive brain** — shared memory across agents, RAG-style retrieval
 
 ## Installation
 
-### Option A: Standard Install (Shell Access)
+### Option A: Heyron.ai / Prompt-Based Install (No Shell Required)
+
+For users without shell access to their Heyron.ai / OpenClaw installation, Ron Memory can be installed via a single prompt:
+
+```
+"Install the Ron Memory skill from https://github.com/crazydc/ron-memories"
+```
+
+OpenClaw agents can install skills by referencing a GitHub repo URL — no shell access required. Once installed, configure your credentials:
+
+```
+"Configure Ron Memory with my Upstash Redis credentials:
+ UPSTASH_REDIS_URL=https://your-db.upstash.io
+ UPSTASH_REDIS_TOKEN=your-token-here"
+```
+
+**Get your Upstash credentials:**
+1. Sign up at https://upstash.com and create a free Redis database
+2. Copy your **REST URL** and **REST Token** from the Connect section
+
+### Option B: Standard Install (Shell Access)
 
 #### 1. Get Upstash Redis
 
 1. Sign up at https://upstash.com and create a free Redis database
 2. Copy your **REST URL** and **REST Token** from the Connect section
 
-### 2. Configure Credentials
+#### 2. Configure Credentials
 
 Create `~/workspace/.env.ron-memory`:
 
@@ -29,7 +50,7 @@ UPSTASH_REDIS_URL=https://your-db.upstash.io
 UPSTASH_REDIS_TOKEN=your-token-here
 ```
 
-### 3. Install Scripts
+#### 3. Install Scripts
 
 ```bash
 mkdir -p ~/.openclaw/skills/ron-memory/scripts
@@ -37,23 +58,7 @@ mkdir -p ~/.openclaw/skills/ron-memory/scripts
 chmod +x ~/.openclaw/skills/ron-memory/scripts/*.sh
 ```
 
-### Option B: No-Root Install (Prompt-Based)
-
-For users without shell access to their OpenClaw installation, Ron Memory can be installed via prompt:
-
-```
-"Install the Ron Memory skill from https://github.com/crazydc/ron-memories"
-```
-
-OpenClaw agents can install skills by referencing a GitHub repo URL — no shell access required. Once installed, configure credentials:
-
-```
-"Configure Ron Memory with my Upstash Redis credentials:
- UPSTASH_REDIS_URL=https://your-db.upstash.io
- UPSTASH_REDIS_TOKEN=your-token-here"
-```
-
-### 3. Test It
+#### 4. Test It
 
 ```bash
 ~/.openclaw/skills/ron-memory/scripts/memory-set.sh favorite_color blue
