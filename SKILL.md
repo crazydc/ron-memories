@@ -70,39 +70,25 @@ UPSTASH_REDIS_URL=https://your-db.upstash.io
 UPSTASH_REDIS_TOKEN=your-token
 ```
 
-Also copy to:
-- `/root/.openclaw/.env.ron-memory` (for scripts to find)
-- Subagent workspaces: `/root/.openclaw/workspace-dave/`, `/root/.openclaw/workspace-techsupport/`
+Also copy to `/root/.openclaw/.env.ron-memory` (for scripts to find it).
 
-### Step 4: Update Agent Workspace Files
+### Step 4: (Optional) Update Multiple Agent Workspaces
 
-For each agent workspace (main, dave, techsupport), add to:
+If running multiple agents with shared memory:
 
-**AGENTS.md** - Add to startup sequence:
-```
-6. Read SHARED_MEMORY.md (if exists) - contains shared memory info
-```
-
-**SOUL.md** - Add capabilities section:
-```
-## Shared Memory
-
-You have access to shared memory via the ron-memory skill. 
-Use memory-set.sh to save important info, memory-get.sh to retrieve.
-This memory is shared across all agents.
-```
-
-**TOOLS.md** - Add memory section:
-```
-### Shared Memory
-
-Uses Upstash Redis for cross-agent memory sharing.
-- memory-set.sh <key> <value> - Save a memory
-- memory-get.sh <key> - Get a memory
-- memory-list.sh - List all memories
-```
-
-Also create `SHARED_MEMORY.md` in each workspace with current memories.
+1. Copy `.env.ron-memory` to each agent's workspace
+2. Update each workspace's **AGENTS.md** - add to startup:
+   ```
+   6. Read SHARED_MEMORY.md (if exists) - shared memory info
+   ```
+3. Update **SOUL.md** - add:
+   ```
+   ## Shared Memory
+   You have access to shared memory via ron-memory skill.
+   Use memory-set.sh to save, memory-get.sh to retrieve.
+   ```
+4. Update **TOOLS.md** - add memory script references
+5. Create **SHARED_MEMORY.md** in each workspace
 
 ### Step 5: Test Connection
 
@@ -115,12 +101,12 @@ If it works, installation is complete.
 
 ## Usage
 
-When user says things like "remember that..." or "don't forget...", extract the key info and save it:
+When user says "remember that..." or "don't forget...", save it:
 ```bash
 ./scripts/memory-set.sh <key> "<value>"
 ```
 
-When asked about shared info, check memory:
+When asked about shared info, retrieve it:
 ```bash
 ./scripts/memory-get.sh <key>
 ```
