@@ -70,34 +70,61 @@ UPSTASH_REDIS_URL=https://your-db.upstash.io
 UPSTASH_REDIS_TOKEN=your-token
 ```
 
-Also copy to `/root/.openclaw/.env.ron-memory` (for scripts to find it).
+Also copy to `/root/.openclaw/.env.ron-memory` (scripts check here first).
 
-### Step 4: (Optional) Update Multiple Agent Workspaces
-
-If running multiple agents with shared memory:
-
-1. Copy `.env.ron-memory` to each agent's workspace
-2. Update each workspace's **AGENTS.md** - add to startup:
-   ```
-   6. Read SHARED_MEMORY.md (if exists) - shared memory info
-   ```
-3. Update **SOUL.md** - add:
-   ```
-   ## Shared Memory
-   You have access to shared memory via ron-memory skill.
-   Use memory-set.sh to save, memory-get.sh to retrieve.
-   ```
-4. Update **TOOLS.md** - add memory script references
-5. Create **SHARED_MEMORY.md** in each workspace
-
-### Step 5: Test Connection
+### Step 4: Test Connection
 
 ```bash
 ./scripts/memory-set.sh test "Hello"
 ./scripts/memory-get.sh test
 ```
 
-If it works, installation is complete.
+If it works, basic installation is complete.
+
+---
+
+## Optional: Multi-Agent Setup
+
+If running multiple agents that need to share memory:
+
+### Step A: Share Config Across Agents
+
+Copy or symlink `.env.ron-memory` to each agent's workspace so they can all access the same Redis instance.
+
+For example, if agents have workspaces at:
+- `/workspace/agent-1/`
+- `/workspace/agent-2/`
+
+Copy `.env.ron-memory` to each one, or use symlinks to point to a central location.
+
+---
+
+## Optional: Update Agent Workspace Files
+
+To make agents aware of shared memory on startup:
+
+1. **AGENTS.md** - Add to startup sequence:
+   ```
+   6. Read SHARED_MEMORY.md (if exists) - shared memory info
+   ```
+
+2. **SOUL.md** - Add capability note:
+   ```
+   ## Shared Memory
+   You have access to shared memory via ron-memory skill.
+   Use memory-set.sh to save, memory-get.sh to retrieve.
+   ```
+
+3. **TOOLS.md** - Add memory section:
+   ```
+   ### Shared Memory
+   Uses Upstash Redis for cross-agent memory sharing.
+   - memory-set.sh <key> <value> - Save
+   - memory-get.sh <key> - Get
+   - memory-list.sh - List all
+   ```
+
+4. Create **SHARED_MEMORY.md** in each workspace with current memories
 
 ## Usage
 
