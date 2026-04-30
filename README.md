@@ -110,6 +110,26 @@ ron-memory/
 └── README.md              # This file
 ```
 
+## Demo Transcript
+
+Here's a conversation transcript showing Ron-Memory in action:
+
+```
+User: I have a BMW and its REG is KT17 KWU
+Agent: *saves to memory*
+  $ memory-set.sh bmw_reg "KT17 KWU"
+  → OK: Saved 'bmw_reg' = 'KT17 KWU'
+
+[... later session ...]
+
+User: What car do I have?
+Agent: $ memory-get.sh bmw_reg
+  → "KT17 KWU"
+"You have a BMW with registration KT17 KWU."
+```
+
+The agent remembered the BMW registration across sessions — without Ron-Memory it would have no memory of this.
+
 ## License
 
 MIT License - See [LICENSE](LICENSE) for details.
