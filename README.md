@@ -13,7 +13,9 @@ Gives your AI agents persistent memory across sessions — they remember facts, 
 
 ## Installation
 
-### 1. Get Upstash Redis
+### Option A: Standard Install (Shell Access)
+
+#### 1. Get Upstash Redis
 
 1. Sign up at https://upstash.com and create a free Redis database
 2. Copy your **REST URL** and **REST Token** from the Connect section
@@ -35,7 +37,23 @@ mkdir -p ~/.openclaw/skills/ron-memory/scripts
 chmod +x ~/.openclaw/skills/ron-memory/scripts/*.sh
 ```
 
-### 4. Test It
+### Option B: No-Root Install (Prompt-Based)
+
+For users without shell access to their OpenClaw installation, Ron Memory can be installed via prompt:
+
+```
+"Install the Ron Memory skill from https://github.com/crazydc/ron-memories"
+```
+
+OpenClaw agents can install skills by referencing a GitHub repo URL — no shell access required. Once installed, configure credentials:
+
+```
+"Configure Ron Memory with my Upstash Redis credentials:
+ UPSTASH_REDIS_URL=https://your-db.upstash.io
+ UPSTASH_REDIS_TOKEN=your-token-here"
+```
+
+### 3. Test It
 
 ```bash
 ~/.openclaw/skills/ron-memory/scripts/memory-set.sh favorite_color blue
@@ -70,6 +88,47 @@ memory-set.sh tesla_reg "XY51 ABC"
 **Agent:** `memory-get.sh tesla_reg` → "XY51 ABC"
 
 → "You have a Tesla with registration XY51 ABC."
+
+## Multi-Agent "Hive Brain" Mode
+
+Ron Memory isn't just for one agent — it works as a **shared memory layer for multi-agent systems**.
+
+### The Problem
+
+- Every time you spawn a subagent, you have to pass context
+- That context burns tokens and gets expensive
+- Each agent re-learns basics repeatedly
+
+### The Solution
+
+Store once, retrieve on-demand:
+
+```
+[HUMAN] → Primary Agent
+"Build Heyron Docs v2. Key features: markdown support, search, dark mode.
+ Dave handles code, DevOps handles deployment."
+
+Primary Agent saves:
+  project:heyron-docs:context = "v2 with markdown, search, dark mode"
+  project:heyron-docs:task:dave = "implement markdown + search + dark mode"
+  project:heyron-docs:task:devops = "deploy to mini PC, configure nginx"
+
+[HUMAN] → "Spawn Dave to work on Heyron Docs"
+
+Spawn Agent Dave with: "Read project:heyron-docs tasks, complete the coding tasks"
+
+Dave pulls memory → knows exactly what to build
+No context stuffing needed — just targeted retrieval
+```
+
+### Why This Is RAG
+
+**RAG** (Retrieval-Augmented Generation) = when an AI retrieves relevant info at query time instead of stuffing all info into the prompt.
+
+- **Traditional:** Pass full history to every agent → expensive, degraded quality
+- **Ron Memory:** Each agent retrieves only what it needs → fast, cheap, accurate
+
+> Token cost drops per agent. Model quality improves. Agents feel "aware" because they remember.
 
 ## How It Works
 
