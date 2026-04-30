@@ -14,7 +14,11 @@ Gives your AI agents persistent memory across sessions — they remember facts, 
 
 ## Installation
 
-### Option A: Heyron.ai / Prompt-Based Install (No Shell Required)
+> ⭐ **Option A is the recommended way for Heyron.ai users** — no shell access needed
+
+---
+
+### ✅ Option A: Heyron.ai / Prompt-Based Install (No Shell Required)
 
 For users without shell access to their Heyron.ai / OpenClaw installation, Ron Memory can be installed via a single prompt:
 
@@ -34,7 +38,9 @@ OpenClaw agents can install skills by referencing a GitHub repo URL — no shell
 1. Sign up at https://upstash.com and create a free Redis database
 2. Copy your **REST URL** and **REST Token** from the Connect section
 
-### Option B: Standard Install (Shell Access)
+---
+
+### 🔧 Option B: Standard Install (Shell Access)
 
 #### 1. Get Upstash Redis
 
