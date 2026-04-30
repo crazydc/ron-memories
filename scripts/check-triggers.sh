@@ -12,6 +12,21 @@ TRIGGERS=(
     "keep in mind"
     "remind me"
     "store this"
+    "save that"
+    "note down"
+    "make a note"
+    "write down"
+    "note to self"
+    "remember to"
+    "take note"
+    "file this"
+    "log this"
+    "record this"
+    "capture"
+    "preserve"
+    "hold onto"
+    "my"
+    "i have a"
 )
 
 # Read input from args or stdin
@@ -30,8 +45,7 @@ INPUT_LOWER=$(echo "$INPUT" | tr '[:upper:]' '[:lower:]')
 for trigger in "${TRIGGERS[@]}"; do
     if echo "$INPUT_LOWER" | grep -qi "$trigger"; then
         # Extract the content after the trigger
-        CONTENT=$(echo "$INPUT" | sed -i "s/.*$trigger *//i" 2>/dev/null || echo "$INPUT")
-        CONTENT=$(echo "$CONTENT" | sed "s/.*$trigger *//i")
+        CONTENT=$(echo "$INPUT" | sed "s/.*$trigger *//i")
         echo "FOUND|$CONTENT"
         exit 0
     fi
