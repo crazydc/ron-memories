@@ -33,44 +33,11 @@ Cross-session memory using Upstash Redis with local file caching.
 2. **Read**: From local file (fast)
 3. **Delete**: Removes from both
 
-## Setup
+## Full Installation
 
-### Step 1: Create Upstash Database
+When user asks to install/enable ron-memory, do the following:
 
-1. Go to https://upstash.com
-2. Sign up (email + password)
-3. Click **Create Database**
-4. Enter a name (e.g., "JeffMemory")
-5. Select region closest to you
-6. Choose **Free** tier (or upgrade if needed)
-7. Click **Create**
-
-### Step 2: Get Credentials
-
-1. Click on your new database
-2. Scroll to **Connect** section
-3. Copy the **REST URL** (looks like `https://xxx.upstash.io`)
-4. Copy the **REST Token** (long string starting with `gQ...`)
-
-**Important:** Make sure "Read-Only Token" is NOT checked — use the default token.
-
-### Step 3: Configure
-
-Create `.env.ron-memory` in your workspace:
-
-```bash
-UPSTASH_REDIS_URL=https://your-db.upstash.io
-UPSTASH_REDIS_TOKEN=your-token
-```
-
-Or export as environment variables:
-
-```bash
-export UPSTASH_REDIS_URL=https://your-db.upstash.io
-export UPSTASH_REDIS_TOKEN=your-token
-```
-
-### Step 4: Enable in OpenClaw
+### Step 1: Enable Skill in OpenClaw
 
 Add to `openclaw.json`:
 
@@ -86,12 +53,35 @@ Add to `openclaw.json`:
 }
 ```
 
-### Step 5: Test
+### Step 2: Ask User for Upstash Credentials
+
+If user doesn't have an Upstash account:
+1. Tell them to go to https://upstash.com and create a free database
+2. Ask them to copy the REST URL and REST Token from the Connect section
+
+If user provides credentials, proceed to Step 3.
+
+### Step 3: Create Configuration
+
+Create `.env.ron-memory` in the workspace root:
 
 ```bash
-./scripts/memory-set.sh test "Hello World"
+UPSTASH_REDIS_URL=https://your-db.upstash.io
+UPSTASH_REDIS_TOKEN=your-token
+```
+
+Also copy to:
+- `/root/.openclaw/.env.ron-memory` (for scripts to find)
+- Subagent workspaces: `/root/.openclaw/workspace-dave/.env.ron-memory`, `/root/.openclaw/workspace-techsupport/.env.ron-memory`
+
+### Step 4: Test Connection
+
+```bash
+./scripts/memory-set.sh test "Hello"
 ./scripts/memory-get.sh test
 ```
+
+If it works, installation is complete.
 
 ## Configuration
 
