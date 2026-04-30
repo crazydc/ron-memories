@@ -72,36 +72,11 @@ UPSTASH_REDIS_TOKEN=your-token
 
 Also copy to `/root/.openclaw/.env.ron-memory` (scripts check here first).
 
-### Step 4: Test Connection
+### Step 4: Update Agent Workspace Files
 
-```bash
-./scripts/memory-set.sh test "Hello"
-./scripts/memory-get.sh test
-```
+This is required so agents are aware of the memory system and read it on startup.
 
-If it works, basic installation is complete.
-
----
-
-## Optional: Multi-Agent Setup
-
-If running multiple agents that need to share memory:
-
-### Step A: Share Config Across Agents
-
-Copy or symlink `.env.ron-memory` to each agent's workspace so they can all access the same Redis instance.
-
-For example, if agents have workspaces at:
-- `/workspace/agent-1/`
-- `/workspace/agent-2/`
-
-Copy `.env.ron-memory` to each one, or use symlinks to point to a central location.
-
----
-
-## Optional: Update Agent Workspace Files
-
-To make agents aware of shared memory on startup:
+For each agent workspace, update:
 
 1. **AGENTS.md** - Add to startup sequence:
    ```
@@ -124,7 +99,24 @@ To make agents aware of shared memory on startup:
    - memory-list.sh - List all
    ```
 
-4. Create **SHARED_MEMORY.md** in each workspace with current memories
+4. Create **SHARED_MEMORY.md** with current memories (can be empty to start)
+
+### Step 5: Test Connection
+
+```bash
+./scripts/memory-set.sh test "Hello"
+./scripts/memory-get.sh test
+```
+
+If it works, installation is complete.
+
+---
+
+## Optional: Multi-Agent Setup
+
+If running multiple agents that need to share memory:
+
+Copy or symlink `.env.ron-memory` to each agent's workspace so they can all access the same Redis instance.
 
 ## Usage
 
