@@ -13,7 +13,12 @@ UPSTASH_REDIS_URL="${UPSTASH_REDIS_URL:-}"
 UPSTASH_REDIS_TOKEN="${UPSTASH_REDIS_TOKEN:-}"
 
 # Source credentials from .env.ron-memory if it exists
-if [ -f "$HOME/workspace/.env.ron-memory" ]; then
+# Check multiple possible locations (most specific first)
+if [ -f "$HOME/.openclaw/.env.ron-memory" ]; then
+    source "$HOME/.openclaw/.env.ron-memory"
+elif [ -f "$HOME/.openclaw/workspace/.env.ron-memory" ]; then
+    source "$HOME/.openclaw/workspace/.env.ron-memory"
+elif [ -f "$HOME/workspace/.env.ron-memory" ]; then
     source "$HOME/workspace/.env.ron-memory"
 fi
 

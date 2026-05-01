@@ -40,11 +40,15 @@ while [[ $# -gt 0 ]]; do
         *) 
             if [ -z "$KEY" ]; then
                 KEY="$1"
+                shift
+            elif [ -z "$VALUE" ]; then
+                VALUE="$1"
+                shift
             else
-                VALUE="$2"
+                # Unknown extra arg
                 shift
             fi
-            shift ;;
+            ;;
     esac
 done
 
@@ -57,7 +61,7 @@ fi
 NAMESPACE="${KEY%%:*}"
 
 # Check if key already exists (staleness detection)
-if [ -f "$RON_CACHE_FILE" ] && ! grep -q "^| $KEY " "$RON_CACHE_FILE" 2>/dev/null; then
+if [ -f "$RON_CACHE_FILE" ] && grep -q "^| $KEY " "$RON_CACHE_FILE" 2>/dev/null; then
     # Key exists - check for staleness
     OLD_VALUE=$(grep "^| $KEY " "$RON_CACHE_FILE" | awk -F'|' '{gsub(/^ *| *$/, "", $3); print $3}')
     
