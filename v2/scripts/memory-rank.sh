@@ -3,8 +3,6 @@
 # Returns top N most relevant memories given a task context
 # Ranks by: freshness, access frequency, namespace relevance to task
 
-set -e
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/config.sh"
 
@@ -45,103 +43,93 @@ if [ -z "$TASK" ]; then
     exit 1
 fi
 
-# Keywords for namespace relevance scoring
-declare -A CONTEXT_KEYWORDS=(
-    ["project"]="project code feature build debug test deploy"
-    ["vehicle"]="car drive travel commute vehicle bmw tesla"
-    ["family"]="wife husband kids children family son daughter birthday"
-    ["career"]="work job career company promotion office meeting"
-    ["pref"]="prefer favorite colour color like dislike"
-    ["service"]="account login subscription service"
-    ["book"]="book read read finished chapter"
-    ["agent"]="agent devops techsupport dave deployment"
-    ["goal"]="goal target milestone progress achieve"
-)
+NOW=$(date +%s)
+TASK_LC=$(echo "$TASK" | tr '[:upper:]' '[:lower:]')
 
-# Score a single entry
-score_entry() {
-    local key="$1"
-    local value="$2"
-    local timestamp="$3"
-    
-    local score=0
-    
-    # Extract namespace
-    local ns="${key%%:*}"
-    
-    # Freshness score (newer = higher, max 30 days = full score)
-    local age_seconds=$(($(date +%s) - $(date -d "$timestamp" +%s 2>/dev/null || echo 0)))
-    local age_days=$((age_seconds / 86400))
-    if [ $age_days -lt 30 ]; then
-        score=$((score + (30 - age_days)))
-    fi
-    
-    # Namespace relevance to task
-    if [ -n "$NAMESPACES" ]; then
-        # Filter by requested namespaces
-        local found=false
-        IFS=',' read -ra NS_FILTER <<< "$NAMESPACES"
-        for ns_filter in "${NS_FILTER[@]}"; do
-            if [ "$ns" = "$ns_filter" ]; then
-                found=true
-                break
-            fi
-        done
-        if [ "$found" = false ]; then
-            echo "0"
-            return
-        fi
-    else
-        # Score by context match
-        local keywords="${CONTEXT_KEYWORDS[$ns]}"
-        if [ -n "$keywords" ]; then
-            local kw_score=0
-            for kw in $keywords; do
-                if echo "$TASK" | grep -qi "$kw"; then
-                    kw_score=$((kw_score + 5))
-                fi
-            done
-            score=$((score + kw_score))
-        fi
-    fi
-    
-    # Long-term memory bonus (permanent namespaces rarely change)
-    local ttl="${NAMESPACE_TTL[$ns]}"
-    if [ "$ttl" = "0" ]; then
-        score=$((score + 10))
-    fi
-    
-    echo "$score"
-}
+# Extract only actual data lines (pipe-delimited with | at start)
+grep "^| " "$RON_CACHE_FILE" > /tmp/memory_rank_input.txt
 
-# Score and sort all entries
-ranked_output=""
+# Score and output results
+results=""
 total_chars=0
 
-if [ -f "$RON_CACHE_FILE" ]; then
-    while IFS='|' read -r key value timestamp rest; do
-        key=$(echo "$key" | tr -d ' ')
-        value=$(echo "$value" | tr -d ' ')
-        timestamp=$(echo "$timestamp" | tr -d ' ')
-        
-        [ -z "$key" ] && continue
-        [[ "$key" =~ ^# ]] && continue
-        
-        score=$(score_entry "$key" "$value" "$timestamp")
-        
-        # Collect all entries with scores
-        ranked_output="$ranked_output$score|$key|$value|$timestamp\n"
-    done < "$RON_CACHE_FILE"
-fi
-
-# Sort by score descending, take top N, within budget
-echo -e "$ranked_output" | sort -t'|' -k1 -rn | head -n "$LIMIT" | while IFS='|' read -r score key value timestamp; do
-    # Rough token estimate: ~4 chars per token
-    entry_chars=$((${#key} + ${#value} + 50))  # +50 for formatting
-    entry_tokens=$((entry_chars / 4))
+while IFS= read -r line; do
+    key=$(echo "$line" | cut -d'|' -f2 | tr -d ' ')
+    value=$(echo "$line" | cut -d'|' -f3 | tr -d ' ')
+    timestamp=$(echo "$line" | cut -d'|' -f4 | tr -d ' ')
     
-    if [ $total_chars -lt $((BUDGET * 4)) ]; then
-        echo "[$score] $key = $value (updated: $timestamp)"
-        total_chars=$((total_chars + entry_chars))
+    [ -z "$key" ] && continue
+    [[ "$key" =~ ^# ]] && continue
+    
+    ns="${key%%:*}"
+    
+    if [ -n "$timestamp" ]; then
+        ts_epoch=$(date -d "$timestamp" +%s 2>/dev/null || echo 0)
+        if [ "$ts_epoch" -gt 0 ]; then
+            age_days=$(( (NOW - ts_epoch) / 86400 ))
+            if [ $age_days -lt 30 ]; then
+                freshness=$((30 - age_days))
+            else
+                freshness=0
+            fi
+        else
+            freshness=0
+        fi
+    else
+        freshness=0
     fi
-done
+    
+    score=$freshness
+    
+    case "$ns" in
+        family)
+            for kw in family wife husband kids children son daughter birthday; do
+                if echo "$TASK_LC" | grep -q "$kw"; then score=$((score + 5)); fi
+            done
+            score=$((score + 10))
+            ;;
+        vehicle)
+            for kw in car vehicle drive bmw tesla commute; do
+                if echo "$TASK_LC" | grep -q "$kw"; then score=$((score + 5)); fi
+            done
+            score=$((score + 10))
+            ;;
+        project)
+            for kw in project code feature build debug test deploy; do
+                if echo "$TASK_LC" | grep -q "$kw"; then score=$((score + 5)); fi
+            done
+            score=$((score + 10))
+            ;;
+        career)
+            for kw in work job career company; do
+                if echo "$TASK_LC" | grep -q "$kw"; then score=$((score + 5)); fi
+            done
+            score=$((score + 10))
+            ;;
+        user|contact|goal|book|agent)
+            score=$((score + 10))
+            ;;
+    esac
+    
+    if [ -n "$NAMESPACES" ]; then
+        found=0
+        IFS=',' read -ra NS_FILTER <<< "$NAMESPACES"
+        for ns_filter in "${NS_FILTER[@]}"; do
+            if [ "$ns" = "$ns_filter" ]; then found=1; break; fi
+        done
+        if [ "$found" = 0 ]; then score=0; fi
+    fi
+    
+    if [ "$score" -gt 0 ]; then
+        entry_chars=$((${#key} + ${#value} + 50))
+        if [ $total_chars -lt $((BUDGET * 4)) ]; then
+            results="$results[$score] $key = $value (updated: $timestamp)"$'\n'
+            total_chars=$((total_chars + entry_chars))
+        fi
+    fi
+done < /tmp/memory_rank_input.txt
+
+# Sort and display
+echo -e "$results" | sort -t'[' -k2 -rn | head -n "$LIMIT"
+
+rm -f /tmp/memory_rank_input.txt
