@@ -1,0 +1,1 @@
+/root/.openclaw/skills/ron-memory/v2/scripts/memory-prune.sh
