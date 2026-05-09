@@ -1,57 +1,63 @@
 #!/bin/bash
-# memory-sync.sh v2 — Pull all namespaces from Redis, update local cache
+# memory-sync.sh — Pull all memories from Redis, update local cache
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/config.sh"
-
+TOKEN='gQAAAAAAAa1mAAIgcDE0YzVlNGUwYzE1N2I0ZGRhYWU1MDc0OTc5YzA1YWMyYw'
+URL='https://summary-hare-109926.upstash.io'
+CACHE_FILE="/root/.openclaw/workspace/memory/ron-memory.md"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-echo "=== Sync started at $NOW ===" >&2
-echo "Cache file: $RON_CACHE_FILE" >&2
+echo "🔄 Syncing from Redis..."
 
-# Get all keys from Upstash
-KEYS_RESPONSE=$(curl -s "$UPSTASH_REDIS_URL/keys/ron:*" \
-    -H "Authorization: Bearer $UPSTASH_REDIS_TOKEN")
+# Get all keys
+KEYS_JSON=$(curl -s "$URL/keys/ron:*" -H "Authorization: Bearer $TOKEN")
 
-# Extract keys - tr removes all quotes
-KEYS=$(echo "$KEYS_RESPONSE" | grep -o 'ron:[^"]*' | tr -d '"')
-KEY_COUNT=$(echo "$KEYS" | wc -w)
-echo "Found $KEY_COUNT keys in Redis" >&2
+# Parse keys - filter out test/system keys
+KEYS=$(echo "$KEYS_JSON" | python3 -c "
+import sys, json
+keys = json.loads(sys.stdin.read()).get('result', [])
+filtered = [k for k in keys if not k.startswith('ron:jeff') and not k.startswith('ron:test') and not k.startswith('ron:archive')]
+for k in filtered:
+    print(k)
+")
 
-# Write to temp file first
-OUTFILE=$(mktemp)
+# Write new cache
 {
     echo "# Ron Memory Cache"
     echo "# Last synced: $NOW"
     echo ""
     echo "| Key | Value | Updated |"
-    echo "|-----|-------|---------|"
+    echo "|-----|-------|--------|"
     
-    line_num=0
-    for redis_key in $KEYS; do
-        line_num=$((line_num + 1))
-        key="${redis_key#ron:user:}"
+    count=0
+    while IFS= read -r key; do
+        [ -z "$key" ] && continue
         
-        if [[ "$key" =~ ^archive: ]]; then
-            continue
+        # Get value - it's a nested JSON string
+        VALUE_JSON=$(curl -s "$URL/get/$key" -H "Authorization: Bearer $TOKEN")
+        
+        # Parse: {"result": "{\"value\": \"...\", \"timestamp\": \"...\"}"}
+        RESULT=$(echo "$VALUE_JSON" | python3 -c "
+import sys, json
+d = json.loads(sys.stdin.read())
+inner = json.loads(d.get('result', '{}'))
+v = inner.get('value', '')
+t = inner.get('timestamp', '$NOW')
+print(f'{v}|{t}')
+" 2>/dev/null || echo "")
+        
+        if [ -n "$RESULT" ]; then
+            VALUE="${RESULT%|*}"
+            TS="${RESULT##*|}"
+            SHORT_KEY="${key#ron:user:}"
+            SHORT_KEY="${SHORT_KEY#ron:}"
+            echo "| $SHORT_KEY | $VALUE | $TS |"
+            count=$((count + 1))
         fi
-        
-        # Get value and timestamp from Redis
-        GET_RESPONSE=$(curl -s "$UPSTASH_REDIS_URL/get/$redis_key" \
-            -H "Authorization: Bearer $UPSTASH_REDIS_TOKEN")
-        
-        value=$(echo "$GET_RESPONSE" | grep -o '"value":"[^"]*"' | head -1 | cut -d'"' -f4)
-        timestamp=$(echo "$GET_RESPONSE" | grep -o '"timestamp":"[^"]*"' | head -1 | cut -d'"' -f4)
-        
-        if [ -n "$value" ]; then
-            echo "| $key | $value | $timestamp |"
-        fi
-    done
-} > "$OUTFILE"
+    done <<< "$KEYS"
+    
+    echo ""
+    echo "# Synced $count entries"
+} > "$CACHE_FILE.tmp"
 
-entry_count=$(grep -c "^| " "$OUTFILE" 2>/dev/null || echo 0)
-echo "Wrote $entry_count entries to temp file" >&2
-
-mv "$OUTFILE" "$RON_CACHE_FILE"
-echo "OK: Synced to $RON_CACHE_FILE" >&2
-echo "  - $entry_count entries" >&2
+mv "$CACHE_FILE.tmp" "$CACHE_FILE"
+echo "✅ Synced $count entries to $CACHE_FILE"
