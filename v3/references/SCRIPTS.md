@@ -117,6 +117,47 @@ memory-rank.sh "<query or task description>" [--budget <tokens>]
 
 ---
 
+### memory-search.sh
+
+Fuzzy/natural language search — search without needing exact key names.
+
+```bash
+memory-search.sh "<query>" [options]
+```
+
+| Option | Description |
+|--------|-------------|
+| `<query>` | Search query (keyword, phrase, or question) |
+| `--limit N` | Maximum results (default: 10) |
+| `--redis` | Search Redis only |
+| `--cache` | Search local cache only |
+| `--namespace NS` | Filter to specific namespace (e.g., `vehicle`, `family`) |
+
+**Scoring algorithm:**
+- Key match: +30 (matches in key name are more relevant)
+- Value match: +10 (matches in value content)
+- Reinforce bonus: +1 per access count
+
+**Search behavior:**
+- Fuzzy matching: matches substrings (case-insensitive)
+- Searches both Redis and local cache (deduplicates automatically)
+- Skips reinforce tracking keys and archive keys
+
+**Examples:**
+```bash
+./memory-search.sh "car"
+./memory-search.sh "what car does Alex have"
+./memory-search.sh "heyron project status" --limit 5
+./memory-search.sh "sam birthday" --namespace family
+```
+
+**Use when:**
+- You don't know the exact key name
+- You want to search by value content, not just key
+- Natural language queries like "what car does he drive"
+
+---
+
 ## Curation Scripts
 
 ### memory-prune.sh
