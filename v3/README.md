@@ -69,6 +69,31 @@ See [references/NAMESPACES.md](references/NAMESPACES.md) for full list.
 
 ---
 
+## Upgrading from v2
+
+If you're migrating from v2, run the migration script:
+
+```bash
+cd ~/.openclaw/skills/ron-memory/v3
+
+# Preview what will be migrated
+./scripts/memory-migrate-v2-to-v3.sh --dry-run
+
+# Actually migrate (when ready)
+./scripts/memory-migrate-v2-to-v3.sh --force
+```
+
+The script converts v2 keys to v3 format:
+- `user_name` → `user:acasey:name`
+- `user:preference:*` → `pref:*`
+- `user:pref:*` → `pref:*`
+
+Entries already in v3 format (`family:*`, `story:*`, `vehicle:*`, etc.) are skipped automatically.
+
+**Note:** The script operates on the local cache file. Your Redis is updated with the new v3 keys.
+
+---
+
 ## Installation
 
 See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md) for detailed setup.
