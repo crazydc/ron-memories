@@ -4,6 +4,7 @@
 TOKEN='gQAAAAAAAa1mAAIgcDE0YzVlNGUwYzE1N2I0ZGRhYWU1MDc0OTc5YzA1YWMyYw'
 URL='https://summary-hare-109926.upstash.io'
 CACHE_FILE="/root/.openclaw/workspace/memory/ron-memory.md"
+MIGRATION_FLAG_KEY="ron:migration:v2to:v3:done"
 ERRORS=0
 
 echo "🔍 Checking Ron-Memory health..."
@@ -58,6 +59,49 @@ if [ -f "$CACHE_FILE" ]; then
 else
     echo "❌ Local cache: missing"
     ERRORS=$((ERRORS + 1))
+fi
+
+# 5. Check for v2 keys if migration not flagged
+MIGRATION_FLAG_JSON=$(curl -s "$URL/get/$MIGRATION_FLAG_KEY" -H "Authorization: Bearer $TOKEN")
+MIGRATION_DONE=$(echo "$MIGRATION_FLAG_JSON" | python3 -c "
+import sys,json
+d=json.loads(sys.stdin.read())
+inner=d.get('result','{}')
+if inner and inner!='null':
+    inner=json.loads(inner) if isinstance(inner,str) else inner
+    print(inner.get('value',''))
+else:
+    print('')
+" 2>/dev/null)
+
+if [ -z "$MIGRATION_DONE" ]; then
+    # Check for v2 keys
+    V2_KEYS=$(echo "$KEYS_JSON" | python3 -c "
+import sys,json
+keys=json.loads(sys.stdin.read()).get('result',[])
+v2=[]
+for k in keys:
+    if k.startswith('ron:health:') or k.startswith('ron:reinforce:') or k.startswith('ron:migration:'):
+        continue
+    short=k[4:] if k.startswith('ron:') else k
+    if ':' not in short and not short.startswith('user:') and not short.startswith('family:') and not short.startswith('story:') and not short.startswith('contact:') and not short.startswith('project:') and not short.startswith('vehicle:') and not short.startswith('pref:') and not short.startswith('archive:') and not short.startswith('reminder:') and not short.startswith('goal:'):
+        v2.append(k)
+print(f'V2_KE YS_FOUND:{len(v2)}')
+for k in v2[:3]:
+    print(k)
+" 2>/dev/null)
+    
+    V2_COUNT=$(echo "$V2_KEYS" | head -1 | grep -oP 'V2_KEYS_FOUND:\K\d+' || echo "0")
+    
+    if [ -n "$V2_KEYS" ] && [ "$V2_COUNT" -gt 0 ]; then
+        echo "⚠️  WARNING: v2 keys detected but migration not flagged!"
+        echo "    Found $V2_COUNT v2-style keys"
+        echo "    Run: ./scripts/memory-migrate-v2-to-v3.sh --force"
+    else
+        echo "✅ Migration status: v2 keys detected (migration may be needed)"
+    fi
+else
+    echo "✅ Migration status: v2 → v3 migration complete"
 fi
 
 # Summary

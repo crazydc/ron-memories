@@ -5,6 +5,8 @@
 # v2 keys: flat format (user_name, family:sam:name)
 # v3 keys: namespaced format (user:acasey:name, family:sam:name)
 #
+# After migration completes, sets flag key: ron:migration:v2to:v3:done
+#
 # Usage: ./memory-migrate-v2-to-v3.sh [--dry-run] [--force]
 #   --dry-run  Show what would be migrated without making changes
 #   --force    Actually write changes (required for actual migration)
@@ -30,6 +32,15 @@ while [[ $# -gt 0 ]]; do
         *) shift ;;
     esac
 done
+
+if [ -z "$UPSTASH_REDIS_URL" ] || [ -z "$UPSTASH_REDIS_TOKEN" ]; then
+    echo "ERROR: Redis credentials not found."
+    echo "Set UPSTASH_REDIS_URL and UPSTASH_REDIS_TOKEN in config.sh or .env.ron-memory"
+    exit 1
+fi
+
+# Migration flag key - set after successful migration
+MIGRATION_FLAG_KEY="ron:migration:v2to:v3:done"
 
 if [ "$FORCE" = false ] && [ "$DRY_RUN" = false ]; then
     echo "ERROR: Use --dry-run to preview or --force to migrate"
@@ -82,7 +93,7 @@ while IFS='|' read -r _ key value timestamp _; do
     # Skip empty/comment lines
     [ -z "$key" ] && continue
     [[ "$key" =~ ^# ]] && continue
-    [[ "$key" =~ ^-$ ]] && continue  # Skip table separator lines
+    [[ "$key" =~ ^|- ]] && continue  # Skip separator lines
     
     # Clean whitespace
     key=$(echo "$key" | tr -d ' ')
@@ -108,7 +119,7 @@ while IFS='|' read -r _ key value timestamp _; do
         was_migrated=true
     fi
     
-    # Check if it's already v3 format (skip if already migrated or never needed migration)
+    # Check if already v3 format (skip if already migrated or correct namespace)
     if [[ "$key" =~ ^user:acasey: ]] || \
        [[ "$key" =~ ^family: ]] || \
        [[ "$key" =~ ^story: ]] || \
@@ -157,7 +168,7 @@ echo "Migration Summary"
 echo "============================================"
 echo "Total entries scanned:  $total"
 echo "Migrated:                $migrated"
-echo "Skipped (already v3):   $skipped"
+echo "Skipped (already v3):   $skipped
 echo "Errors:                  $errors"
 echo ""
 
@@ -165,10 +176,28 @@ if [ "$DRY_RUN" = true ]; then
     echo "↑ This was a DRY RUN. No changes written."
     echo "  Run with --force to actually migrate."
 else
-    echo "✓ Migration complete!"
+    if [ $errors -eq 0 ] && [ $migrated -gt 0 ]; then
+        # Set migration flag
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        FLAG_RESULT=$(curl -s -X POST "$UPSTASH_REDIS_URL/set/$MIGRATION_FLAG_KEY" \
+            -H "Authorization: Bearer $UPSTASH_REDIS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"value\":\"done\",\"timestamp\":\"$TIMESTAMP\"}")
+        
+        if echo "$FLAG_RESULT" | grep -q '"OK"'; then
+            echo "✓ Migration complete!"
+            echo "✓ Migration flag set: $MIGRATION_FLAG_KEY"
+        else
+            echo "✓ Migration complete (WARNING: Could not set migration flag)"
+        fi
+    else
+        echo "Migration complete with errors - not setting flag."
+        echo "Fix errors and re-run to complete migration."
+    fi
+    
     echo ""
     echo "Next steps:"
     echo "  1. Verify: ./scripts/memory-get.sh user:acasey:name"
     echo "  2. Sync:   ./scripts/memory-sync.sh"
-    echo "  3. Check:  ./scripts/memory-list.sh --stats"
+    echo "  3. Check:  ./scripts/memory-healthcheck.sh
 fi
