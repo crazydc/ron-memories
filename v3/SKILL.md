@@ -122,6 +122,11 @@ Load these when you need more detail:
 | `references/REMINDERS.md` | Cron setup + troubleshooting |
 | `references/ARCHITECTURE.md` | v3 design decisions |
 
+
+## Migrating from v2
+
+If upgrading from v2, see `scripts/memory-migrate-v2-to-v3.sh`.
+
 ## v3 vs v2
 
 | Feature | v2 | v3 |

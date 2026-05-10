@@ -275,3 +275,41 @@ memory-reinforce.sh <key>
 ```
 
 Called by `memory-get.sh` on each access. Increments `ron:reinforce:count:<key>`.
+
+---
+
+
+## Migration Scripts
+
+### memory-migrate-v2-to-v3.sh
+
+Migrate from v2 key format to v3 namespaced format.
+
+```bash
+memory-migrate-v2-to-v3.sh [--dry-run] [--force]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Preview what would be migrated (default) |
+| `--force` | Actually perform the migration |
+
+**What it migrates:**
+
+| v2 Key | v3 Key |
+|--------|--------|
+| `user_name` | `user:dale:name` |
+| `user:preference:*` | `pref:*` |
+| `user:pref:*` | `pref:*` |
+
+**What it skips (already v3 format):**
+- `family:*`, `story:*`, `contact:*`, `project:*`, `vehicle:*`, `pref:*`, `reminder:*`, etc.
+
+**Example:**
+```bash
+# Preview migration
+./memory-migrate-v2-to-v3.sh --dry-run
+
+# Execute migration
+./memory-migrate-v2-to-v3.sh --force
+```
