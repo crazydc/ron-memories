@@ -151,6 +151,49 @@ memory-prune.sh [--dry-run] [--execute]
 
 ---
 
+### memory-cleanup.sh
+
+Bulk cleanup of old test/system entries. Designed to remove test data cluttering the cache.
+
+```bash
+memory-cleanup.sh [--dry-run] [--force] [--keep-days N]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Preview what would be deleted (default) |
+| `--force` | Actually delete matching entries |
+| `--keep-days N` | Also delete entries older than N days |
+
+**Patterns deleted in --force mode:**
+- `ron:health:1777*` — timestamp entries from 2026-05-02 healthcheck testing
+- `ron:test:*` — ron namespace test keys
+- `ron:jeff:test:*` — jeff-specific test keys
+- `ron:health:test:*` — health test entries
+- `testkey` — legacy test key
+
+**Protected namespaces (never deleted):**
+`user`, `family`, `story`, `contact`, `vehicle`, `project`, `goal`, `pref`, `reminder`, `reinforce`, `archive`
+
+**Examples:**
+```bash
+# Preview what would be deleted
+./memory-cleanup.sh
+
+# Actually delete the test entries
+./memory-cleanup.sh --force
+
+# Delete entries older than 30 days (except protected namespaces)
+./memory-cleanup.sh --keep-days 30 --force
+```
+
+**Notes:**
+- Requires `--force` to actually delete — dry-run is the default
+- All protected namespaces are always skipped, even with `--keep-days`
+- Safe to run multiple times — idempotent operation
+
+---
+
 ### memory-audit.sh
 
 Audit for stale entries, conflicts, never-accessed keys.
@@ -231,6 +274,77 @@ morning-briefing-memories.sh
 **Output:** List of entries updated in last 24h (filtered to exclude test/system keys).
 
 ---
+
+### memory-export.sh
+
+Export all Redis memories to a JSON backup file.
+
+```bash
+memory-export.sh [--output <path>] [--stdout] [--all]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--output <path>` | Output file path (default: `exports/ron-memory-YYYY-MM-DD.json`) |
+| `--stdout` | Write JSON to stdout instead of a file (for piping) |
+| `--all` | Include reinforce:* keys (default: excludes them) |
+
+**Export format:** JSON array of `{key, value, timestamp}` objects
+
+**Examples:**
+```bash
+# Export to dated file in exports/
+memory-export.sh
+
+# Pipe to another command or tool
+memory-export.sh --stdout | jq '.[] | select(.key | startswith("user:"))'
+
+# Custom output path
+memory-export.sh --output ~/my-backup.json
+
+# Include reinforce keys
+memory-export.sh --all
+```
+
+**Notes:**
+- Excludes `ron:test:*` and `ron:jeff:*` keys by default
+- Output file is gitignored in exports/
+
+---
+
+### memory-import.sh
+
+Import memories from a JSON backup file.
+
+```bash
+memory-import.sh <backup-file> [--dry-run] [--merge|--replace]
+```
+
+| Option | Description |
+|--------|-------------|
+| `<backup-file>` | Path to the JSON backup file (required) |
+| `--dry-run` | Preview what would be imported without making changes |
+| `--merge` | Add to existing memories (default behavior) |
+| `--replace` | Clear all ron:* keys first, then import |
+
+**Examples:**
+```bash
+# Import from backup (merge mode)
+memory-import.sh exports/ron-memory-2025-01-15.json
+
+# Preview what would be imported
+memory-import.sh backup.json --dry-run
+
+# Replace all existing memories with the backup
+memory-import.sh backup.json --replace
+```
+
+**JSON validation:** Validates the backup file before importing. Exits with error if invalid JSON.
+
+**Exit codes:** 0 = success, 1 = file not found or invalid JSON
+
+---
+
 
 ### memory-delete.sh
 
