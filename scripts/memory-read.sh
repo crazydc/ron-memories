@@ -1,1 +1,0 @@
-/root/.openclaw/skills/ron-memory/scripts_v1/memory-read.sh

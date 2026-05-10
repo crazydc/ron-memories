@@ -4,7 +4,18 @@
 
 ---
 
+## 📖 Glossary
+
+- **Cron** = a clock that runs tasks automatically at set times
+- **Redis** = cloud database that stores your memories
+
+---
+
 ## 🚀 First-Time Setup
+
+**Easiest way:** run `./memory-setup.sh` and answer the questions. It handles steps 2–4 automatically.
+
+Manual steps if you prefer:
 
 ```bash
 # 1. Clone the repo (if not already installed)
@@ -91,6 +102,10 @@ Bad:
 ---
 
 ## 🔧 Troubleshooting
+
+### Glossary
+- **Cron** = a clock that runs tasks automatically at set times
+- **Redis** = cloud database that stores your memories
 
 ### 1. "Redis connection refused"
 ```bash

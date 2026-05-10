@@ -1,205 +1,171 @@
-# Ron-Memory
+# Ron-Memory v3
 
-**Cross-session memory for AI agents using Upstash Redis.**
+**Your AI assistant forgets everything when a session ends. Ron-Memory gives it a second brain.**
 
-Gives your AI agents persistent memory across sessions — they remember facts, preferences, and context just like humans do.
+You mention your car registration once. Three months later, you ask "what's my car reg?" and get the real answer — not a guess, not a hallucination. Your daughter's birthday. Your wife's anniversary preference. That funny story about Buddy learning to catch a frisbee. It all survives session restarts.
 
-## What It Does
-
-- **Saves memories** to Upstash Redis with timestamps
-- **Reads memories** instantly from local cache
-- **Syncs** Redis ↔ local file for reliability
-- **Triggers automatically** on phrases like "remember that...", "don't forget...", "note that..."
-- **Multi-agent hive brain** — shared memory across agents, RAG-style retrieval
-
-## Installation
-
-> ⭐ **Option A is the recommended way for Heyron.ai users** — no shell access needed
+Ron-Memory stores facts, stories, preferences, and reminders — syncing to Upstash Redis so the same memory is available whether you're chatting from your phone, your laptop, or a fresh session after a restart. Built for [Heyron.ai](https://heyron.ai) and OpenClaw, but works anywhere with bash + curl.
 
 ---
 
-### ✅ Option A: Heyron.ai / Prompt-Based Install (No Shell Required)
+## What Makes This Different
 
-For users without shell access to their Heyron.ai / OpenClaw installation, Ron Memory can be installed via a single prompt:
+**Stories, not just facts.** Most memory systems store structured data points. Ron-Memory v3 also stores *life moments* — the summer road trip to coast, the day you shipped your docs project, that thing Charlie did last week. Because your life isn't just data.
 
-```
-"Install the Ron Memory skill from https://github.com/crazydc/ron-memories"
-```
+**Reminders that actually fire.** Most systems rely on heartbeat intervals (every 30–60 min). Ron-Memory v3 uses a dedicated 5-minute cron that checks for due reminders *regardless* of whether you're actively chatting. Your assistant won't miss that birthday reminder just because nobody asked.
 
-OpenClaw agents can install skills by referencing a GitHub repo URL — no shell access required. Once installed, configure your credentials:
+**Reinforcement that learns.** Frequently accessed memories rank higher in retrieval. The things you actually care about float to the top.
 
-```
-"Configure Ron Memory with my Upstash Redis credentials:
- UPSTASH_REDIS_URL=https://your-db.upstash.io
- UPSTASH_REDIS_TOKEN=your-token-here"
-```
-
-**Get your Upstash credentials:**
-1. Sign up at https://upstash.com and create a free Redis database
-2. Copy your **REST URL** and **REST Token** from the Connect section
+**Cloud sync.** Upstash Redis keeps memory in sync across sessions, devices, and restarts. Your AI isn't tied to one machine.
 
 ---
 
-### 🔧 Option B: Standard Install (Shell Access)
+## A Real Example
 
-#### 1. Get Upstash Redis
+**Session 1 — Monday**
 
-1. Sign up at https://upstash.com and create a free Redis database
-2. Copy your **REST URL** and **REST Token** from the Connect section
+> Alex: "My sister Jordan's birthday is coming up on March 22nd. She mentioned wanting one of those kitchen gadgets."
+>
+> Jeff: *(saves to Ron-Memory)*
+> `ron:family:nicola:birthday = 1990/03/22`
+> `ron:story:sister_birthday_2026:title = Jordan wants a kitchen gadget`
+> `ron:story:sister_birthday_2026:date = 2026-01-10`
 
-#### 2. Configure Credentials
+**Session 2 — Three weeks later (fresh session)**
 
-Create `~/workspace/.env.ron-memory`:
+> Alex: "Hey, remind me what Jordan's birthday gift idea was?"
+>
+> Jeff: *(retrieves from Ron-Memory)* "She mentioned wanting a kitchen gadget — something you can send photos to remotely. March 22nd, so about three weeks away."
+
+No re-explaining. No "I don't know." It just remembered.
+
+---
+
+## Just Talk Normally
+
+Say "remember that..." and it gets saved. Chat naturally and your AI picks up context without being asked. Things worth remembering:
+
+- **Family stuff** — birthdays, preferences, who likes what
+- **Life moments** — holidays, milestones, funny stories
+- **Preferences** — how you like to be updated, communication style
+- **Facts** — car reg, subscription logins, device IPs
+- **Reminders** — "remind me in 3 days to..." or "remind me on the 15th to..."
+
+You don't need to format it specially. Just talk.
+
+---
+
+## Install
+
+**Step 1 — Run the setup script:**
 
 ```bash
-UPSTASH_REDIS_URL=https://your-db.upstash.io
-UPSTASH_REDIS_TOKEN=your-token-here
+cd ~/.openclaw/skills/ron-memory
+./scripts/memory-setup.sh
 ```
 
-#### 3. Install Scripts
+Answer the questions (Redis URL + token). The script handles everything else.
+
+**Step 2 — Save your first memory:**
 
 ```bash
-mkdir -p ~/.openclaw/skills/ron-memory/scripts
-# Copy all scripts from the scripts/ folder to that location
-chmod +x ~/.openclaw/skills/ron-memory/scripts/*.sh
+./scripts/memory-set.sh user:name Alex
 ```
 
-#### 4. Test It
+**Step 3 — Read it back:**
 
 ```bash
-~/.openclaw/skills/ron-memory/scripts/memory-set.sh favorite_color blue
-~/.openclaw/skills/ron-memory/scripts/memory-get.sh favorite_color
-# → blue
+./scripts/memory-get.sh user:name
+# → Alex
 ```
 
-## Usage
+That's it. 🧠
 
-| Command | What it does |
-|---------|--------------|
-| `memory-set.sh <key> <value>` | Save a memory |
-| `memory-get.sh <key>` | Get a memory |
-| `memory-list.sh` | List all memories |
-| `memory-delete.sh <key>` | Delete a memory |
-| `memory-sync.sh` | Sync Redis → local file |
-| `check-triggers.sh` | Check for memory triggers in text |
+---
 
-## Example
+## Quick Commands
 
-**Agent:** "I have a Tesla and its REG is XY51 ABC"
+| What | Command |
+|------|---------|
+| Save a fact | `./scripts/memory-set.sh user:name Alex` |
+| Save a story | `./scripts/memory-set.sh story:holiday_2025:title "Summer coast trip"` |
+| Get a memory | `./scripts/memory-get.sh user:name` |
+| List everything | `./scripts/memory-list.sh --stats` |
+| Find relevant | `./scripts/memory-rank.sh "working on your docs project"` |
+| Check reminders | `./scripts/memory-healthcheck.sh` |
 
-**Agent saves it:**
-```bash
-memory-set.sh tesla_reg "XY51 ABC"
-# → OK: Saved 'tesla_reg' = 'XY51 ABC'
-```
+Full reference in [QUICKREF.md](QUICKREF.md).
 
-**Later session:**
+---
 
-**User:** "What car do I have?"
-**Agent:** `memory-get.sh tesla_reg` → "XY51 ABC"
+## Why Not Just Search Chat History?
 
-→ "You have a Tesla with registration XY51 ABC."
+Chat history is text. Ron-Memory is *structured retrieval*:
 
-## Multi-Agent "Hive Brain" Mode
+- **You:** "what's my sister-in-law's birthday?"
+- **Semantic search:** "hmm, probably mentioned it somewhere... Morgan? Casey? some month?"
+- **Ron-Memory:** `ron:family:laura:birthday = 1988/08/14` — exact answer, instant
 
-Ron Memory isn't just for one agent — it works as a **shared memory layer for multi-agent systems**.
+Chat history relies on the AI *guessing* from conversation context. Ron-Memory *knows* because it stores facts in the right place with the right structure.
 
-### The Problem
+Plus: stories, reinforcement, reminders on cron, cloud sync. Chat history doesn't do any of that.
 
-- Every time you spawn a subagent, you have to pass context
-- That context burns tokens and gets expensive
-- Each agent re-learns basics repeatedly
-
-### The Solution
-
-Store once, retrieve on-demand:
-
-```
-[HUMAN] → Primary Agent
-"Build your docs project v2. Key features: markdown support, search, dark mode.
- Dave handles code, DevOps handles deployment."
-
-Primary Agent saves:
-  project:your-docs:context = "v2 with markdown, search, dark mode"
-  project:your-docs:task:dave = "implement markdown + search + dark mode"
-  project:your-docs:task:devops = "deploy to mini PC, configure nginx"
-
-[HUMAN] → "Spawn Dave to work on your docs project"
-
-Spawn Agent Dave with: "Read project:your-docs tasks, complete the coding tasks"
-
-Dave pulls memory → knows exactly what to build
-No context stuffing needed — just targeted retrieval
-```
-
-### Why This Is RAG
-
-**RAG** (Retrieval-Augmented Generation) = when an AI retrieves relevant info at query time instead of stuffing all info into the prompt.
-
-- **Traditional:** Pass full history to every agent → expensive, degraded quality
-- **Ron Memory:** Each agent retrieves only what it needs → fast, cheap, accurate
-
-> Token cost drops per agent. Model quality improves. Agents feel "aware" because they remember.
-
-## How It Works
-
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   Agent     │────▶│  Redis API   │────▶│  Upstash    │
-│  (memory-   │     │  (Upstash)   │     │  Redis      │
-│   set.sh)   │     └──────────────┘     └─────────────┘
-└─────────────┘            │
-                           ▼
-                    ┌─────────────┐
-                    │  Local      │
-                    │  ron-memory │
-                    │  .md file   │
-                    └─────────────┘
-```
-
-- **Write**: Saves to Redis AND local file
-- **Read**: From local file (fast, no API call needed)
-- **Fallback**: If Redis fails, still works from local cache
+---
 
 ## File Structure
 
 ```
-ron-memory/
-├── scripts/
-│   ├── config.sh          # Configuration loader
-│   ├── memory-set.sh      # Save a memory
-│   ├── memory-get.sh      # Get a memory
-│   ├── memory-list.sh     # List all memories
-│   ├── memory-delete.sh    # Delete a memory
-│   ├── memory-sync.sh     # Sync Redis → local file
-│   ├── memory-read.sh     # Read local cache only
-│   └── check-triggers.sh  # Detect "remember that..." triggers
+~/.openclaw/skills/ron-memory/
+├── README.md                ← you are here
+├── SKILL.md                 ← agent instructions
+├── QUICKREF.md              ← command reference
+├── INSTALLATION_GUIDE.md    ← detailed setup
 ├── references/
-│   └── .env.example      # Example credentials file
-├── SKILL.md               # OpenClaw skill definition
-└── README.md              # This file
+│   ├── NAMESPACES.md        ← all namespaces + schemas
+│   ├── SCRIPTS.md           ← full script docs
+│   ├── REMINDERS.md         ← cron setup
+│   └── ARCHITECTURE.md      ← design decisions
+└── scripts/
+    ├── memory-set.sh        ← save (with staleness detection)
+    ├── memory-get.sh        ← get (increments reinforce)
+    ├── memory-sync.sh      ← Redis → local cache
+    ├── memory-rank.sh       ← scored retrieval
+    ├── memory-list.sh       ← list with filters
+    ├── memory-healthcheck.sh
+    └── check-reminders.sh   ← cron-only reminder checker
 ```
 
-## Demo Transcript
+Memory lives in Redis (cloud) + local cache (fast). Stories and reinforce data live in `ron:story:*` and `ron:reinforce:*` namespaces.
 
-Here's a conversation transcript showing Ron-Memory in action:
+---
 
+## Namespaces
+
+| Namespace | What it stores | TTL |
+|-----------|---------------|-----|
+| `user` | Your personal data | permanent |
+| `family` | Family members | permanent |
+| `story` | Life moments ✨ | permanent |
+| `contact` | People you know | permanent |
+| `vehicle` | Cars, bikes | permanent |
+| `project` | Projects | permanent |
+| `pref` | Preferences | 30 days |
+| `reminder` | Time-critical tasks | 7 days |
+| `reinforce` | Access tracking | 7 days |
+| `archive` | Dormant entries | permanent |
+
+The `story:*` namespace is what sets v3 apart — it's not just facts, it's the moments that make someone *them*.
+
+---
+
+## Upgrading from v2
+
+```bash
+cd ~/.openclaw/skills/ron-memory
+./scripts/memory-migrate-v2-to-v3.sh --dry-run   # preview first
+./scripts/memory-migrate-v2-to-v3.sh --force     # then migrate
 ```
-User: I have a Tesla and its REG is XY51 ABC
-Agent: *saves to memory*
-  $ memory-set.sh tesla_reg "XY51 ABC"
-  → OK: Saved 'tesla_reg' = 'XY51 ABC'
 
-[... later session ...]
+---
 
-User: What car do I have?
-Agent: $ memory-get.sh tesla_reg
-  → "XY51 ABC"
-"You have a Tesla with registration XY51 ABC."
-```
-
-The agent remembered the Tesla registration across sessions — without Ron-Memory it would have no memory of this.
-
-## License
-
-MIT License - See [LICENSE](LICENSE) for details.
+*Built for Heyron Agent Jam #1 — May 2026*

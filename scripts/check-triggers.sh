@@ -1,1 +1,0 @@
-/root/.openclaw/skills/ron-memory/scripts_v1/check-triggers.sh

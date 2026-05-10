@@ -13,3 +13,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Ron-Memory exports (local backups - don't commit)
+exports/
+*.json
