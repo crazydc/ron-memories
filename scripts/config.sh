@@ -22,8 +22,16 @@ elif [ -f "$HOME/workspace/.env.ron-memory" ]; then
     source "$HOME/workspace/.env.ron-memory"
 fi
 
-# TTL defaults per namespace (in days, 0 = permanent)
+# TTL defaults per namespace/tier (in days, 0 = permanent)
+# Memory tiers: anchored (permanent), semantic (90d), episodic (30d), reminder (7d), working (1d)
 declare -A NAMESPACE_TTL=(
+    # Core tiers
+    ["anchored"]=0
+    ["semantic"]=90
+    ["episodic"]=30
+    ["reminder"]=7
+    ["working"]=1
+    # Legacy namespaces (kept for backwards compat)
     ["user"]=0
     ["family"]=0
     ["contact"]=0
@@ -35,8 +43,6 @@ declare -A NAMESPACE_TTL=(
     ["agent"]=0
     ["book"]=0
     ["career"]=0
-    ["reminder"]=7
-    ["working"]=1
     ["archive"]=0
 )
 

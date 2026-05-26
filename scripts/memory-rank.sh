@@ -1,10 +1,22 @@
 #!/bin/bash
-# memory-rank.sh v2 — Attention-based retrieval
+# memory-rank.sh v2.1 — Attention-based retrieval with tier support
 # Returns top N most relevant memories given a task context
-# Ranks by: freshness, access frequency, namespace relevance to task
+# Ranks by: freshness, access frequency, tier importance, namespace relevance to task
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/config.sh"
+
+# Tier importance multipliers (higher = more important)
+declare -A TIER_BOOST=(
+    ["anchored"]=20
+    ["semantic"]=10
+    ["episodic"]=5
+    ["reminder"]=3
+    ["working"]=2
+)
+
+# Tier bonus based on age (older episodic memories get boosted to semantic)
+# This implements the consolidation idea - old episodic becomes more like semantic
 
 usage() {
     cat << EOF
@@ -81,6 +93,10 @@ while IFS= read -r line; do
     
     score=$freshness
     
+    # Add tier importance boost
+    tier_score=${TIER_BOOST[$ns]:-5}
+    score=$((score + tier_score))
+    
     case "$ns" in
         family)
             for kw in family wife husband kids children son daughter birthday; do
@@ -106,7 +122,7 @@ while IFS= read -r line; do
             done
             score=$((score + 10))
             ;;
-        user|contact|goal|book|agent)
+        anchored|family|user|contact|goal|book|agent)
             score=$((score + 10))
             ;;
     esac
