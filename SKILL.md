@@ -1,232 +1,141 @@
 ---
-name: ron-memory-v3
-description: "Ron-Memory v3 — Second-brain memory for humans with memory tiers and importance scoring."
+name: ron-memory-v4
+description: "Ron-Memory v4 — second-brain memory store. Python core, no third-party deps, safe against JSON injection, supports --json output for agents."
 ---
 
-# Ron-Memory v3
+# Ron-Memory v4
 
-Cross-session memory that works like a human brain. Not just facts — stories, reinforcement, time-critical reminders, and now **memory tiers** for smarter retrieval.
+Second-brain memory for agents. Cross-session, tiered, Upstash-backed, with local cache for fast reads.
 
-## What's New in v3.1
+**v4 is a Python rewrite of the v3 bash skill.** Same tier system, same data format, but with a clean Python core instead of 6,000 lines of bash.
 
-- **Memory Tiers** — anchored, semantic, episodic, reminder, working
-- **Importance Scoring** — 1-100 importance affects persistence
-- **Tier-Aware Retrieval** — anchored memories always score higher
-- **Consolidation Script** — Like human sleep: condense episodic → semantic
-- **Per-Agent Job Queues** — Agents poll their own queue during heartbeats
+## What's new in v4
 
-## Memory Tiers
-
-| Tier | TTL | Examples |
-|------|-----|----------|
-| `anchored` | permanent | Family birthdays, core identity, never-forget |
-| `semantic` | 90 days | Preferences, relationships, important facts |
-| `episodic` | 30 days | Specific events, conversations, decisions |
-| `reminder` | 7 days | Time-critical tasks |
-| `working` | 1 day | What's happening now |
-
-**Key prefixes:** `anchored:`, `semantic:`, `episodic:`, `reminder:`, `working:`
+- **Python core** (`ron_memory/`) — stdlib only, no `pip install` needed
+- **Safe JSON I/O** — fixes the v3 bash shell-injection bug where values with `"`, `|`, or newlines could corrupt Redis writes
+- **`--json` flag on every verb** — for agents and scripts that want machine-readable output
+- **Single source of truth for credentials** — `config.py` reads `.env.ron-memory` once; no more hardcoded tokens in 15 files
+- **Real tests** — 51 unit tests covering tiers, JSON, search, rank, prune, consolidate
+- **Bash shims for backward compat** — old `memory-set.sh` etc. call into Python if you want them to
 
 ## Quick Start
 
 ```bash
-# Save a fact (auto-detects tier from prefix)
-./scripts/memory-set.sh anchored:sam_birthday "2020-04-15"
-./scripts/memory-set.sh semantic:acasey_preferences "concise communication"
+# Show system status
+python3 -m ron_memory.cli status
 
-# Save with explicit tier + importance
-./scripts/memory-set.sh "trip_lakes" "lakes holiday" --tier episodic --importance 70
+# Save a memory (auto-detects tier from prefix)
+python3 -m ron_memory.cli set anchored:sam_birthday "2020-04-15"
+python3 -m ron_memory.cli set semantic:acasey_preferences "concise communication"
 
 # Get a memory
-./scripts/memory-get.sh anchored:sam_birthday
+python3 -m ron_memory.cli get anchored:sam_birthday
 
-# Find relevant memories for a task (tier-aware)
-./scripts/memory-rank.sh "family birthday"
+# Search by keyword
+python3 -m ron_memory.cli search "Sam birthday" --limit 5
+
+# Rank memories for a task
+python3 -m ron_memory.cli rank "working on heyron project" --limit 5
 
 # List all memories
-./scripts/memory-list.sh --stats
+python3 -m ron_memory.cli list
 
-# Consolidate old episodic → semantic (run weekly)
-./scripts/memory-consolidate.sh
+# Or with stats
+python3 -m ron_memory.cli list --stats
 
-# Check reminders
-./scripts/memory-healthcheck.sh
+# JSON output for any verb
+python3 -m ron_memory.cli status --json
+python3 -m ron_memory.cli list --json
+
+# Sync Redis -> local cache
+python3 -m ron_memory.cli sync
+
+# Prune (dry-run by default)
+python3 -m ron_memory.cli prune --dry-run
+python3 -m ron_memory.cli prune --force
+
+# Consolidate old episodic -> semantic summaries
+python3 -m ron_memory.cli consolidate --days 14
 ```
 
-## Core Scripts
+## Memory Tiers
 
-| Script | What it does |
-|--------|--------------|
-| `memory-set.sh` | Save with tier + importance support |
-| `memory-get.sh` | Get, increments reinforce count |
-| `memory-rank.sh` | Attention-based retrieval (tier-aware) |
-| `memory-sync.sh` | Sync Redis → local cache (heartbeat) |
-| `memory-list.sh` | List with filters + stats |
-| `memory-healthcheck.sh` | Verify Redis + cache |
-| `memory-consolidate.sh` | Summarize episodic → semantic (like sleep) |
-| `check-reminders.sh` | Check due reminders (cron only) |
-| `jobs-queue.sh` | Per-agent job queue system |
+| Tier | TTL | Default importance | Examples |
+|------|-----|--------------------|----------|
+| `anchored` | permanent | 80 | Family birthdays, core identity |
+| `semantic` | 90 days | 50 | Preferences, relationships, important facts |
+| `episodic` | 30 days | 50 | Specific events, conversations, decisions |
+| `reminder` | 7 days | 50 | Time-critical tasks |
+| `working` | 1 day | 50 | What's happening now |
 
----
+**Key prefix determines tier automatically.** `anchored:sam_birthday` is anchored. `episodic:trip_lakes` is episodic. Legacy namespaces (`family:`, `user:`, `project:`, etc.) still work and map to the right tier.
 
-## Per-Agent Job Queue System
+## CLI Reference
 
-Each agent has its own job queue stored in Ron-Memory. Jobs are routed to the correct agent based on job type. Agents poll their queue during heartbeats.
+| Verb | Purpose |
+|------|---------|
+| `set <key> <value>` | Save a memory (with `--tier`, `--importance`, `--context`, `--force`, `--stale-ok`) |
+| `get <key>` | Retrieve a memory (bumps access counter) |
+| `delete <key>` | Remove a memory |
+| `list` | List memories (`--namespace`, `--stats`, `--json`) |
+| `search "<query>"` | Fuzzy search (`--limit`, `--namespace`, `--json`) |
+| `rank "<task>"` | Attention-based ranking (`--limit`, `--budget`, `--namespaces`, `--json`) |
+| `prune` | TTL enforcement (dry-run by default; `--force` to apply) |
+| `sync` | Pull all keys from Redis into local cache |
+| `consolidate` | Find old episodic entries to merge into semantic summaries |
+| `status` | System health snapshot |
+| `migrate-flag` | Set the v2→v3 migration flag in Redis (idempotent) |
 
-### Agent Routing
-
-| Agent | Handles |
-|-------|---------|
-| `main` | healthcheck, reminder, notification, data-fetch, memory-cleanup |
-| `dave` | code-review, deployment, bugfix, feature, testing |
-| `techsupport` | ticket-response, customer-query, escalation |
-| `devops` | docker, nginx, ssh, backup, infrastructure |
-
-### Commands
-
-```bash
-# Check your queue (for heartbeat)
-./scripts/jobs-queue.sh main check
-./scripts/jobs-queue.sh dave check
-
-# Claim next pending job
-./scripts/jobs-queue.sh main claim
-
-# Add job (auto-routes to correct agent)
-./scripts/jobs-queue.sh system add "healthcheck" "Run mini PC health check"
-
-# Add job to specific agent
-./scripts/jobs-queue.sh system add-to "dave" "bugfix" "Fix login form CSS"
-
-# Complete a job
-./scripts/jobs-queue.sh main complete job_xxx success
-
-# List all queues (admin)
-./scripts/jobs-queue.sh main list
-```
-
-### Job Lifecycle
-
-```
-pending → in_progress → completed
-         ↓
-       failed → pending (retry)
-```
-
-1. **Add job** → Job added to agent's queue with `pending` status
-2. **Claim job** → Job status changed to `in_progress`, job stays in queue
-3. **Complete job** → Job removed from queue
-4. **Fail job** → Job returns to queue with `pending` status
-
-### Example: Agent Heartbeat Integration
-
-```bash
-# In heartbeat script, check for work:
-JOB_ID=$(bash $SCRIPT_DIR/jobs-queue.sh $AGENT_ID claim)
-if [ "$JOB_ID" != "NO_JOBS" ]; then
-    echo "Working on job: $JOB_ID"
-    # Do the work...
-    # Mark complete
-    bash $SCRIPT_DIR/jobs-queue.sh $AGENT_ID complete $JOB_ID success
-fi
-```
-
-## Importance Scoring
-
-When saving, you can set importance 1-100:
-
-- **80-100:** Critical (birthdays, health, core preferences)
-- **50-79:** Normal (day-to-day facts)
-- **20-49:** Low (misc notes, temporary info)
-- **1-19:** Transient (working memory, ephemeral)
-
-Higher importance = memory persists longer even in same tier.
-
-## Retrieval Scoring
-
-When `memory-rank.sh` runs, memories score by:
-1. **Freshness** — newer = higher (30 day window)
-2. **Tier boost** — anchored +20, semantic +10, episodic +5, reminder +3, working +2
-3. **Keyword match** — family keywords for family namespace, etc.
-
-## Consolidation (Like Human Sleep)
-
-Run `memory-consolidate.sh` weekly to:
-1. Find episodic memories older than 14 days
-2. Group by topic
-3. Summarize into semantic memories
-4. Archive originals
-
-This keeps episodic pool fresh while preserving essence in semantic.
-
-## Namespace Mapping (Legacy → Tier)
-
-| Old Namespace | Tier | TTL |
-|---------------|------|-----|
-| `user`, `family`, `contact`, `vehicle` | anchored | permanent |
-| `pref`, `project`, `goal`, `service`, `agent` | semantic | 90 days |
-| `reminder` | reminder | 7 days |
-| (new) | episodic | 30 days |
-| (new) | working | 1 day |
-
-**Note:** Old namespaces still work — they auto-map to tiers in memory-set.sh.
+Every verb supports `--json` for machine-readable output.
 
 ## Architecture
 
 ```
-memory-set.sh → Redis (tier + importance stored)
-                      ↓
-                 (touch reinforce:count:<key>)
+ron_memory/
+├── config.py       # Loads .env.ron-memory (single source of truth)
+├── tiers.py        # Tier detection, validation, TTL math
+├── jsonio.py       # Safe JSON encode/decode (fixes v3 injection bug)
+├── core.py         # Memory class — Redis + cache I/O
+├── search.py       # Keyword search + attention-based rank
+├── prune.py        # TTL enforcement
+├── sync.py         # Redis -> cache
+├── consolidate.py  # Episodic -> semantic grouping
+└── cli.py          # argparse-based subcommands
 
-memory-get.sh → Redis → Cache fallback
-                      ↓
-                 (increment reinforce:count:<key>)
+scripts_v4_shims/   # Thin bash wrappers for backward compat
+├── memory-set.sh   # exec python3 -m ron_memory.cli set "$@"
+├── memory-get.sh   # exec python3 -m ron_memory.cli get "$@"
+├── ... one per verb
+└── memory.sh       # exec python3 -m ron_memory.cli "$@"
 
-memory-sync.sh → Redis → local cache (heartbeat, ~30min)
-memory-rank.sh → Scored by freshness + tier + keywords → Top N
-memory-consolidate.sh → episodic → semantic (weekly cron)
-
-jobs-queue.sh → Per-agent job queues in Redis
-                      ↓
-    Agent heartbeat polls jobs:<agent>:queue
-                      ↓
-    Claim → Work → Complete/Fail
+tests/
+├── test_tiers.py        # 12 tests
+├── test_jsonio.py       # 13 tests
+├── test_search.py       # 11 tests
+├── test_prune.py        # 8 tests
+└── test_consolidate.py  # 7 tests
 ```
 
-## Setting Up Reminders
+## Migration from v3
 
-Reminders need their own cron (5 min interval):
-```bash
-crontab -e
-# Add:
-*/5 * * * * bash ~/.openclaw/skills/ron-memory/scripts/check-reminders.sh >> /var/log/ron-reminders.log 2>&1
-```
+v4 is wire-compatible with v3. Existing data in Upstash works without changes. The v2-detection code in v3 was warning forever; the migration flag is now set automatically by `python3 -m ron_memory.cli migrate-flag`.
+
+To switch a v3 cron to v4: replace the bash script with the matching shim from `scripts_v4_shims/`. The shims are 3-line wrappers that call Python with the same args.
+
+To go fully native: skip the shims and call `python3 -m ron_memory.cli <verb> [args]` directly.
+
+## What v4 deliberately doesn't do
+
+- **No new features.** v4 is a faithful port of v3 minus the bugs. Embeddings, dream, synthesis, and links were moved to `archive/` for v5.
+- **No `pip install` dependencies.** Stdlib only.
+- **No token rotation.** The exposed TOKEN in the v3 bash files is a separate problem; the v4 core never reads the old bash files.
+- **`jobs-queue.sh` is untouched.** It's a separate refactor (inter-agent task routing) and probably should be replaced with `sessions_send` calls. Out of scope for v4.
 
 ## Files
 
-- `/root/.openclaw/workspace/docs/AI-MEMORY-SYSTEMS.md` — Full research on memory tiers
-- `/root/.openclaw/workspace/TOOLS.md` — Updated commands reference
-
----
-
-## Migrating from v2
-
-If upgrading from v2:
-1. Update `config.sh` — new TTL settings
-2. Update `memory-set.sh` — new flags
-3. Update `memory-rank.sh` — tier boosts
-4. Run `memory-list.sh --stats` to see namespace distribution
-
-## v3.1 vs v3.0
-
-| Feature | v3.0 | v3.1 |
-|---------|------|------|
-| Basic save/retrieve | ✅ | ✅ |
-| Memory tiers | ❌ | ✅ |
-| Importance scoring | ❌ | ✅ |
-| Tier-aware retrieval | ❌ | ✅ |
-| Consolidation script | ❌ | ✅ |
-| Per-agent job queues | ❌ | ✅ |
-| Stories namespace | ✅ | ✅ |
-| Reinforcement tracking | ✅ | ✅ |
-| Reminders on cron | ✅ | ✅ |
+- `SKILL.md` — this file
+- `ron_memory/` — the Python core
+- `scripts_v4_shims/` — bash wrappers for backward compat
+- `tests/` — 51 unit tests, all green
+- `archive/` — old bash scripts kept for reference
+- `docs/RON-MEMORY-V4-DESIGN.md` — design doc (in workspace)

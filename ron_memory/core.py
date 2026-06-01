@@ -278,7 +278,13 @@ class Memory:
         return short
 
     def cache_entries(self) -> list[dict]:
-        """Return all entries from the local cache as parsed dicts."""
+        """Return all entries from the local cache as parsed dicts.
+
+        Skips:
+          - Blank lines
+          - Lines starting with '#' (comments)
+          - The markdown table header rows
+        """
         if not self.cache_file.is_file():
             return []
         entries = []
@@ -288,7 +294,11 @@ class Memory:
             parts = [p.strip() for p in line.split("|")]
             if len(parts) < 4:
                 continue
-            key, value, timestamp, meta = parts[1], parts[2], parts[3], parts[4] if len(parts) > 4 else ""
+            key, value, timestamp = parts[1], parts[2], parts[3]
+            # Skip header/separator rows
+            if key.lower() == "key" or set(key) <= {"-"} or set(value) <= {"-"}:
+                continue
+            meta = parts[4] if len(parts) > 4 else ""
             # Parse tier/importance from meta
             tier = "semantic"
             importance = 50
