@@ -13,6 +13,7 @@ Cross-session memory that works like a human brain. Not just facts — stories, 
 - **Importance Scoring** — 1-100 importance affects persistence
 - **Tier-Aware Retrieval** — anchored memories always score higher
 - **Consolidation Script** — Like human sleep: condense episodic → semantic
+- **Per-Agent Job Queues** — Agents poll their own queue during heartbeats
 
 ## Memory Tiers
 
@@ -64,6 +65,71 @@ Cross-session memory that works like a human brain. Not just facts — stories, 
 | `memory-healthcheck.sh` | Verify Redis + cache |
 | `memory-consolidate.sh` | Summarize episodic → semantic (like sleep) |
 | `check-reminders.sh` | Check due reminders (cron only) |
+| `jobs-queue.sh` | Per-agent job queue system |
+
+---
+
+## Per-Agent Job Queue System
+
+Each agent has its own job queue stored in Ron-Memory. Jobs are routed to the correct agent based on job type. Agents poll their queue during heartbeats.
+
+### Agent Routing
+
+| Agent | Handles |
+|-------|---------|
+| `main` | healthcheck, reminder, notification, data-fetch, memory-cleanup |
+| `dave` | code-review, deployment, bugfix, feature, testing |
+| `techsupport` | ticket-response, customer-query, escalation |
+| `devops` | docker, nginx, ssh, backup, infrastructure |
+
+### Commands
+
+```bash
+# Check your queue (for heartbeat)
+./scripts/jobs-queue.sh main check
+./scripts/jobs-queue.sh dave check
+
+# Claim next pending job
+./scripts/jobs-queue.sh main claim
+
+# Add job (auto-routes to correct agent)
+./scripts/jobs-queue.sh system add "healthcheck" "Run mini PC health check"
+
+# Add job to specific agent
+./scripts/jobs-queue.sh system add-to "dave" "bugfix" "Fix login form CSS"
+
+# Complete a job
+./scripts/jobs-queue.sh main complete job_xxx success
+
+# List all queues (admin)
+./scripts/jobs-queue.sh main list
+```
+
+### Job Lifecycle
+
+```
+pending → in_progress → completed
+         ↓
+       failed → pending (retry)
+```
+
+1. **Add job** → Job added to agent's queue with `pending` status
+2. **Claim job** → Job status changed to `in_progress`, job stays in queue
+3. **Complete job** → Job removed from queue
+4. **Fail job** → Job returns to queue with `pending` status
+
+### Example: Agent Heartbeat Integration
+
+```bash
+# In heartbeat script, check for work:
+JOB_ID=$(bash $SCRIPT_DIR/jobs-queue.sh $AGENT_ID claim)
+if [ "$JOB_ID" != "NO_JOBS" ]; then
+    echo "Working on job: $JOB_ID"
+    # Do the work...
+    # Mark complete
+    bash $SCRIPT_DIR/jobs-queue.sh $AGENT_ID complete $JOB_ID success
+fi
+```
 
 ## Importance Scoring
 
@@ -120,7 +186,11 @@ memory-sync.sh → Redis → local cache (heartbeat, ~30min)
 memory-rank.sh → Scored by freshness + tier + keywords → Top N
 memory-consolidate.sh → episodic → semantic (weekly cron)
 
-check-reminders.sh → Redis → Due reminders (cron, every 5min)
+jobs-queue.sh → Per-agent job queues in Redis
+                      ↓
+    Agent heartbeat polls jobs:<agent>:queue
+                      ↓
+    Claim → Work → Complete/Fail
 ```
 
 ## Setting Up Reminders
@@ -156,6 +226,7 @@ If upgrading from v2:
 | Importance scoring | ❌ | ✅ |
 | Tier-aware retrieval | ❌ | ✅ |
 | Consolidation script | ❌ | ✅ |
+| Per-agent job queues | ❌ | ✅ |
 | Stories namespace | ✅ | ✅ |
 | Reinforcement tracking | ✅ | ✅ |
 | Reminders on cron | ✅ | ✅ |
