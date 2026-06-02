@@ -24,6 +24,7 @@ def prune(
     entries: list[dict],
     namespace_filter: str | None = None,
     dry_run: bool = True,
+    apply_fn=None,
 ) -> dict:
     """Prune expired entries based on tier TTL + importance floor.
 
@@ -31,6 +32,12 @@ def prune(
     caller is responsible for writing the survivors back.
 
     Archive entries (key starts with "archive:") are never pruned.
+
+    If `apply_fn` is provided AND `dry_run` is False, it is called once
+    per expired entry with (key, entry_dict) — typically `memory.delete`.
+    This makes the prune actually do something. If `apply_fn` is None and
+    dry_run is False, expired entries are still marked in `pruned`/`archived`
+    but nothing is written (legacy behaviour, deprecated).
     """
     now = datetime.now(timezone.utc)
     survivors: list[dict] = []
@@ -62,8 +69,16 @@ def prune(
 
         age = _age_days(entry.get("timestamp", ""))
         if age > effective_ttl:
-            if not dry_run:
-                # In real use we'd call Memory.set to archive. For now we mark.
+            if not dry_run and apply_fn is not None:
+                try:
+                    apply_fn(key, entry)
+                    archived.append(entry)
+                except Exception as exc:
+                    # Don't include in pruned if apply failed
+                    survivors.append(entry)
+                    continue
+            elif not dry_run:
+                # Legacy path: dry_run=False but no apply_fn
                 archived.append(entry)
             pruned.append(entry)
         else:

@@ -188,24 +188,33 @@ def cmd_rank(args: argparse.Namespace) -> int:
 def cmd_prune(args: argparse.Namespace) -> int:
     m = Memory()
     entries = m.cache_entries()
+
+    # --force implies dry_run=False; otherwise honour --dry-run flag.
+    # Pass an apply_fn so expired entries are actually deleted from Redis.
+    def _apply(key: str, entry: dict) -> None:
+        m.delete(key)
+
     result = prune_mod.prune(
         entries,
         namespace_filter=args.namespace or None,
-        dry_run=args.dry_run,
+        dry_run=not args.force,
+        apply_fn=_apply if args.force else None,
     )
     if args.json:
         print(json.dumps({
             "pruned_count": result["pruned_count"],
             "survivor_count": result["survivor_count"],
+            "archived_count": len(result.get("archived", [])),
             "dry_run": result["dry_run"],
         }, indent=2))
     else:
-        print(f"✂️  Prune {'(DRY RUN)' if args.dry_run else '(LIVE)'}")
+        print(f"✂️  Prune {'(DRY RUN)' if result['dry_run'] else '(LIVE)'}")
         print(f"   Pruned:   {result['pruned_count']}")
+        print(f"   Archived: {len(result.get('archived', []))}")
         print(f"   Survivors: {result['survivor_count']}")
-        if args.dry_run:
+        if result['dry_run']:
             print()
-            print("Run with --force to apply.")
+            print("Run with --force to actually delete expired entries.")
     return 0
 
 
@@ -226,6 +235,38 @@ def cmd_consolidate(args: argparse.Namespace) -> int:
         entries,
         min_age_days=args.days,
     )
+    if not candidates and not args.apply:
+        if args.json:
+            print(json.dumps([], indent=2))
+        else:
+            print("No consolidation candidates found.")
+        return 0
+
+    # When --apply is passed, write each proposed summary to Redis.
+    if args.apply:
+        applied = 0
+        failed = 0
+        for c in candidates:
+            summary = consolidate_mod.build_summary(c["topic"], c["entries"])
+            result = m.set(
+                key=summary["key"],
+                value=summary["value"],
+                tier=summary["tier"],
+                importance=summary["importance"],
+                context=summary.get("context", "consolidated"),
+                stale_ok=True,  # don't reject if a prior consolidation exists
+            )
+            if result.get("status") in ("saved", "updated", "replaced"):
+                applied += 1
+            else:
+                failed += 1
+        if args.json:
+            print(json.dumps({"candidates": len(candidates), "applied": applied, "failed": failed}, indent=2))
+        else:
+            print(f"📦 Consolidation applied: {applied}/{len(candidates)} topics written ({failed} failed)")
+        return 0 if failed == 0 else 1
+
+    # Dry-run / no-apply path: just describe
     if args.json:
         out = []
         for c in candidates:
@@ -236,9 +277,6 @@ def cmd_consolidate(args: argparse.Namespace) -> int:
             })
         print(json.dumps(out, indent=2))
     else:
-        if not candidates:
-            print("No consolidation candidates found.")
-            return 0
         print(f"📦 Found {len(candidates)} topic(s) for consolidation:")
         for c in candidates:
             print(f"\n  Topic: {c['topic']} ({len(c['entries'])} entries)")
@@ -246,8 +284,7 @@ def cmd_consolidate(args: argparse.Namespace) -> int:
                 print(f"    - {e['key']}: {e['value'][:80]}")
             summary = consolidate_mod.build_summary(c["topic"], c["entries"])
             print(f"  Proposed: {summary['key']} = {summary['value'][:100]}...")
-        if args.dry_run:
-            print("\n(DRY RUN — no changes made)")
+        print("\nRun with --apply to actually write the semantic:summary:* entries.")
     return 0
 
 
@@ -261,6 +298,177 @@ def cmd_migrate_flag(args: argparse.Namespace) -> int:
         else:
             print("❌ Failed to set migration flag")
     return 0 if ok else 1
+
+
+def cmd_export(args: argparse.Namespace) -> int:
+    """Export the full Ron-Memory state to a JSON file.
+
+    Output format is a JSON array of {key, value, tier, importance,
+    context, timestamp} objects — same shape as `memory list --json`.
+    """
+    from pathlib import Path
+    m = Memory()
+    entries = m.cache_entries()
+    if args.namespace:
+        entries = [e for e in entries if e["key"].split(":", 1)[0] == args.namespace]
+    out_path = Path(args.output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(entries, indent=2, ensure_ascii=False))
+    if args.json:
+        print(json.dumps({"exported": len(entries), "path": str(out_path)}, indent=2))
+    else:
+        print(f"📤 Exported {len(entries)} entries to {out_path}")
+    return 0
+
+
+def cmd_import(args: argparse.Namespace) -> int:
+    """Import entries from a JSON file produced by `memory export`.
+
+    Uses --stale-ok semantics so re-imports don't reject. Pass --force
+    to overwrite without archiving. Pass --dry-run to preview.
+    """
+    from pathlib import Path
+    m = Memory()
+    in_path = Path(args.input)
+    if not in_path.exists():
+        print(f"❌ File not found: {in_path}", file=sys.stderr)
+        return 1
+    raw = in_path.read_text()
+    try:
+        entries = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        print(f"❌ Invalid JSON: {exc}", file=sys.stderr)
+        return 1
+    if not isinstance(entries, list):
+        print(f"❌ Expected a JSON array of entries, got {type(entries).__name__}", file=sys.stderr)
+        return 1
+    if args.dry_run:
+        if args.json:
+            print(json.dumps({"would_import": len(entries), "dry_run": True}, indent=2))
+        else:
+            print(f"🔍 Would import {len(entries)} entries (dry run, no changes)")
+        return 0
+    saved = 0
+    failed = 0
+    for entry in entries:
+        key = entry.get("key")
+        value = entry.get("value", "")
+        tier = entry.get("tier")
+        importance = entry.get("importance", 50)
+        context = entry.get("context", "")
+        if not key:
+            failed += 1
+            continue
+        # For raw value strings (from cache), the value is a JSON-encoded
+        # payload like {"value": "...", "tier": ..., ...}. We need to
+        # extract the actual stored value.
+        if isinstance(value, str) and value.startswith('{"value":'):
+            try:
+                inner = json.loads(value)
+                value = inner.get("value", value)
+                if not tier:
+                    tier = inner.get("tier")
+                if not importance or importance == 50:
+                    importance = inner.get("importance", importance)
+            except (json.JSONDecodeError, TypeError):
+                pass  # use as-is
+        result = m.set(
+            key=key,
+            value=value,
+            tier=tier,
+            importance=importance,
+            context=context,
+            force=args.force,
+            stale_ok=not args.force,
+        )
+        status = result.get("status", "")
+        if status in ("saved", "updated", "replaced") or "key" in result:
+            saved += 1
+        else:
+            failed += 1
+    if args.json:
+        print(json.dumps({"imported": saved, "failed": failed, "total": len(entries)}, indent=2))
+    else:
+        print(f"📥 Imported {saved}/{len(entries)} entries ({failed} failed)")
+    return 0 if failed == 0 else 1
+
+
+def cmd_audit(args: argparse.Namespace) -> int:
+    """Scan for memory hygiene issues: missing tier/importance, bad timestamps,
+    duplicate prefixes, broken JSON in values.
+    """
+    m = Memory()
+    entries = m.cache_entries()
+    issues: list[dict] = []
+    from collections import Counter
+    prefix_counts: Counter = Counter()
+    for e in entries:
+        key = e.get("key", "")
+        prefix_counts[key.split(":", 1)[0] if ":" in key else "(none)"] += 1
+        # Missing metadata
+        if not e.get("tier"):
+            issues.append({"key": key, "issue": "missing_tier"})
+        if e.get("importance") is None:
+            issues.append({"key": key, "issue": "missing_importance"})
+        # Bad timestamp
+        ts = e.get("timestamp", "")
+        if ts:
+            try:
+                from datetime import datetime
+                datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                issues.append({"key": key, "issue": f"bad_timestamp: {ts!r}"})
+        # Check value JSON — values from cache_entries are wrapped as
+        # {"value": "...", "tier": ...}. Try parsing the outer wrapper
+        # first; if that fails, flag it.
+        val = e.get("value", "")
+        if isinstance(val, str) and val.startswith("{"):
+            try:
+                json.loads(val)
+            except json.JSONDecodeError as exc:
+                # Common cause: double-encoded payload. Try parsing the
+                # inner value to see if the wrap is just malformed.
+                kind = "value_not_valid_json"
+                if "Extra data" in str(exc) or "Expecting" in str(exc):
+                    # Likely double-encoding — check if first parse up to
+                    # the broken position yields a valid {value: ...} object.
+                    try:
+                        # Try to truncate at the failure point
+                        end = val.find('}}')
+                        if end > 0:
+                            candidate = val[: end + 1]
+                            inner = json.loads(candidate)
+                            if isinstance(inner, dict) and "value" in inner:
+                                kind = "double_encoded_value (cosmetic)"
+                    except Exception:
+                        pass
+                issues.append({"key": key, "issue": kind})
+    summary = {
+        "total_entries": len(entries),
+        "total_issues": len(issues),
+        "issues": issues,
+        "by_namespace": dict(prefix_counts.most_common()),
+    }
+    if args.json:
+        print(json.dumps(summary, indent=2))
+    else:
+        print(f"🔍 Audit: {len(entries)} entries, {len(issues)} issues")
+        if issues:
+            print()
+            by_issue: dict = {}
+            for i in issues:
+                by_issue.setdefault(i["issue"].split(":")[0], []).append(i["key"])
+            for issue_type, keys in by_issue.items():
+                print(f"  {issue_type}: {len(keys)}")
+                for k in keys[:5]:
+                    print(f"    - {k}")
+                if len(keys) > 5:
+                    print(f"    ... and {len(keys) - 5} more")
+        print()
+        print("By namespace:")
+        for ns, count in prefix_counts.most_common():
+            print(f"  {ns}: {count}")
+    return 0 if not issues else 1
 
 
 # ─── Argparse ────────────────────────────────────────────────────────────
@@ -328,8 +536,8 @@ def build_parser() -> argparse.ArgumentParser:
     # prune
     p_prune = sub.add_parser("prune", help="TTL enforcement (dry-run by default)")
     p_prune.add_argument("--namespace", help="Only prune this namespace")
-    p_prune.add_argument("--dry-run", action="store_true", default=True)
-    p_prune.add_argument("--force", action="store_true", help="Actually apply changes")
+    p_prune.add_argument("--dry-run", action="store_true")
+    p_prune.add_argument("--force", action="store_true", help="Actually delete expired entries")
     p_prune.add_argument("--json", action="store_true")
     p_prune.set_defaults(func=cmd_prune)
 
@@ -342,6 +550,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_cons = sub.add_parser("consolidate", help="Find episodic entries to consolidate")
     p_cons.add_argument("--days", type=int, default=14)
     p_cons.add_argument("--dry-run", action="store_true", default=True)
+    p_cons.add_argument("--apply", action="store_true", help="Actually write semantic:summary:* entries")
     p_cons.add_argument("--json", action="store_true")
     p_cons.set_defaults(func=cmd_consolidate)
 
@@ -349,6 +558,26 @@ def build_parser() -> argparse.ArgumentParser:
     p_mig = sub.add_parser("migrate-flag", help="Set the v2->v3 migration flag in Redis")
     p_mig.add_argument("--json", action="store_true")
     p_mig.set_defaults(func=cmd_migrate_flag)
+
+    # export
+    p_export = sub.add_parser("export", help="Export full Ron-Memory state to a JSON file")
+    p_export.add_argument("output", help="Output file path (e.g. backups/ron-memory.json)")
+    p_export.add_argument("--namespace", help="Filter by namespace prefix (e.g. anchored, family)")
+    p_export.add_argument("--json", action="store_true")
+    p_export.set_defaults(func=cmd_export)
+
+    # import
+    p_import = sub.add_parser("import", help="Import entries from a JSON file produced by `memory export`")
+    p_import.add_argument("input", help="Input file path")
+    p_import.add_argument("--dry-run", action="store_true", help="Preview only, do not write")
+    p_import.add_argument("--force", action="store_true", help="Overwrite without archiving old values")
+    p_import.add_argument("--json", action="store_true")
+    p_import.set_defaults(func=cmd_import)
+
+    # audit
+    p_audit = sub.add_parser("audit", help="Scan for memory hygiene issues")
+    p_audit.add_argument("--json", action="store_true")
+    p_audit.set_defaults(func=cmd_audit)
 
     return p
 
