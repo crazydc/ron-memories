@@ -1,5 +1,15 @@
 # Ron-Memory v3 Architecture
 
+> **⚠️ This document describes v3, which has been superseded by [v4 (Python)](../../SKILL.md).** v4 is a faithful port of v3 with a Python core instead of bash. The high-level design principles still apply, but the command syntax, namespace format, and component names have changed.
+>
+> **v3 → v4 changes that affect this doc:**
+> - Namespace prefix changed from `ron:family:sam:birthday` to `anchored:sam_birthday` (tier-based prefix)
+> - Separate `story:` / `reinforce:` / `archive:` namespaces → unified `semantic:` / `episodic:` with tier-based TTLs
+> - `memory-set.sh` → `python3 -m ron_memory.cli set` (or `memory set` via wrapper)
+> - Reminder cron (`check-reminders.sh`) was a v3 feature; v4 is a library, not a service. Use OpenClaw cron or your own setup.
+>
+> For the v4 architecture, see `SKILL.md` and the v4 Python module (`ron_memory/`).
+
 ## Philosophy
 
 Memory should work like a human's brain — not just store facts, but curate them. Some things are hot (accessed often, recent), others are cold (dormant, historical). The system should surface what's relevant now while keeping the rest accessible.

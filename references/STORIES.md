@@ -1,5 +1,9 @@
 # Stories — Capturing Life Moments
 
+> **⚠️ v3 feature documentation.** The `story:` namespace and example commands in this doc are v3 syntax. In v4, life moments are stored under `semantic:` or `episodic:` tier prefixes (e.g. `semantic:coast_2025:title`). The concept is the same — rich, emotional memories — but the keys and commands have changed.
+>
+> For v4, see `SKILL.md`. The `memory set "semantic:coast_2025:title" "..."` example below would now be `memory set semantic:coast_2025→title "..."` in v4 (using `→` for nesting, or just a flat key like `semantic:coast_2025_title`).
+
 Stories are the soul of memory. They transform dry data into something worth reminiscing.
 
 ## What Makes a Story vs a Fact?

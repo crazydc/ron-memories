@@ -1,20 +1,22 @@
-# Ron-Memory v3
+# Ron-Memory v4
 
 **Your AI assistant forgets everything when a session ends. Ron-Memory gives it a second brain.**
 
 You mention your car registration once. Three months later, you ask "what's my car reg?" and get the real answer — not a guess, not a hallucination. Your daughter's birthday. Your wife's anniversary preference. That funny story about Buddy learning to catch a frisbee. It all survives session restarts.
 
-Ron-Memory stores facts, stories, preferences, and reminders — syncing to Upstash Redis so the same memory is available whether you're chatting from your phone, your laptop, or a fresh session after a restart. Built for [Heyron.ai](https://heyron.ai) and OpenClaw, but works anywhere with bash + curl.
+Ron-Memory stores facts, stories, preferences, and reminders — syncing to Upstash Redis so the same memory is available whether you're chatting from your phone, your laptop, or a fresh session after a restart. Built for [Heyron.ai](https://heyron.ai) and OpenClaw, but works anywhere with Python 3.
 
 ---
 
 ## What Makes This Different
 
-**Stories, not just facts.** Most memory systems store structured data points. Ron-Memory v3 also stores *life moments* — the summer road trip to coast, the day you shipped your docs project, that thing Charlie did last week. Because your life isn't just data.
+**Stories, not just facts.** Ron-Memory stores life moments — the summer road trip to coast, the day you shipped your docs project, that thing Charlie did last week. Because your life isn't just data.
 
-**Reminders that actually fire.** Most systems rely on heartbeat intervals (every 30–60 min). Ron-Memory v3 uses a dedicated 5-minute cron that checks for due reminders *regardless* of whether you're actively chatting. Your assistant won't miss that birthday reminder just because nobody asked.
+**Tiered memory with real TTLs.** Permanent (`anchored:*`) for family and identity, 90-day (`semantic:*`) for preferences, 30-day (`episodic:*`) for events, 7-day (`reminder:*`) for time-critical tasks, 1-day (`working:*`) for current context. Old memories prune themselves, important ones stick.
 
-**Reinforcement that learns.** Frequently accessed memories rank higher in retrieval. The things you actually care about float to the top.
+**Safe by design.** v4 is a Python rewrite with stdlib only — no `pip install` needed. JSON values are properly encoded (no shell-injection bugs), and the CLI accepts `--json` on every verb for machine-readable output.
+
+**51 unit tests.** Real tests for tiers, JSON, search, rank, prune, consolidate. All green.
 
 **Cloud sync.** Upstash Redis keeps memory in sync across sessions, devices, and restarts. Your AI isn't tied to one machine.
 
@@ -25,17 +27,22 @@ Ron-Memory stores facts, stories, preferences, and reminders — syncing to Upst
 **Session 1 — Monday**
 
 > Alex: "My sister Jordan's birthday is coming up on March 22nd. She mentioned wanting one of those kitchen gadgets."
->
-> Jeff: *(saves to Ron-Memory)*
-> `ron:family:nicola:birthday = 1990/03/22`
-> `ron:story:sister_birthday_2026:title = Jordan wants a kitchen gadget`
-> `ron:story:sister_birthday_2026:date = 2026-01-10`
+
+```bash
+memory set anchored:jordan_birthday "1990/03/22"
+memory set semantic:jordan_gift_idea "kitchen gadget"
+```
 
 **Session 2 — Three weeks later (fresh session)**
 
 > Alex: "Hey, remind me what Jordan's birthday gift idea was?"
->
-> Jeff: *(retrieves from Ron-Memory)* "She mentioned wanting a kitchen gadget — something you can send photos to remotely. March 22nd, so about three weeks away."
+
+```bash
+memory get anchored:jordan_birthday
+# → 1990/03/22
+memory get semantic:jordan_gift_idea
+# → kitchen gadget
+```
 
 No re-explaining. No "I don't know." It just remembered.
 
@@ -57,25 +64,40 @@ You don't need to format it specially. Just talk.
 
 ## Install
 
-**Step 1 — Run the setup script:**
+**Step 1 — Clone the skill:**
 
 ```bash
-cd ~/.openclaw/skills/ron-memory
-./scripts/memory-setup.sh
+git clone https://github.com/crazydc/ron-memories.git
+cd ron-memories
+git checkout v4-python-core
 ```
 
-Answer the questions (Redis URL + token). The script handles everything else.
+**Step 2 — Set up Redis credentials:**
 
-**Step 2 — Save your first memory:**
+Create `.env.ron-memory` in your workspace with your Upstash REST URL and token:
 
 ```bash
-./scripts/memory-set.sh user:name Alex
+UPSTASH_REDIS_REST_URL=https://your-db.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your-token-here
 ```
 
-**Step 3 — Read it back:**
+**Step 3 — Use it directly via Python:**
 
 ```bash
-./scripts/memory-get.sh user:name
+python3 -m ron_memory.cli set anchored:test "hello world"
+python3 -m ron_memory.cli get anchored:test
+# → hello world
+```
+
+**Or install the `memory` wrapper** (recommended for daily use):
+
+```bash
+# Symlink the wrapper into your scripts dir
+ln -s /path/to/ron-memories/scripts_v4_shims/memory.sh ~/.openclaw/workspace/scripts/memory
+
+# Now you can use it from anywhere
+memory set anchored:user_name "Alex"
+memory get anchored:user_name
 # → Alex
 ```
 
@@ -87,14 +109,16 @@ That's it. 🧠
 
 | What | Command |
 |------|---------|
-| Save a fact | `./scripts/memory-set.sh user:name Alex` |
-| Save a story | `./scripts/memory-set.sh story:holiday_2025:title "Summer coast trip"` |
-| Get a memory | `./scripts/memory-get.sh user:name` |
-| List everything | `./scripts/memory-list.sh --stats` |
-| Find relevant | `./scripts/memory-rank.sh "working on your docs project"` |
-| Check reminders | `./scripts/memory-healthcheck.sh` |
+| Save a fact | `memory set anchored:user_name "Alex"` |
+| Get a memory | `memory get anchored:user_name` |
+| List everything | `memory list --stats` |
+| Find relevant | `memory rank "working on your docs project"` |
+| Search by keyword | `memory search "sam birthday"` |
+| Sync Redis → local | `memory sync` |
+| Health check | `memory status` |
+| Prune (dry-run) | `memory prune --dry-run` |
 
-Full reference in [QUICKREF.md](QUICKREF.md).
+Full reference in [SKILL.md](SKILL.md).
 
 ---
 
@@ -104,68 +128,70 @@ Chat history is text. Ron-Memory is *structured retrieval*:
 
 - **You:** "what's my sister-in-law's birthday?"
 - **Semantic search:** "hmm, probably mentioned it somewhere... Morgan? Casey? some month?"
-- **Ron-Memory:** `ron:family:laura:birthday = 1988/08/14` — exact answer, instant
+- **Ron-Memory:** `anchored:morgan_birthday = 1988/08/14` — exact answer, instant
 
 Chat history relies on the AI *guessing* from conversation context. Ron-Memory *knows* because it stores facts in the right place with the right structure.
 
-Plus: stories, reinforcement, reminders on cron, cloud sync. Chat history doesn't do any of that.
+Plus: tiered TTLs, attention-based ranking, safe JSON, 51 tests, cloud sync. Chat history doesn't do any of that.
 
 ---
 
 ## File Structure
 
 ```
-~/.openclaw/skills/ron-memory/
+ron-memories/
 ├── README.md                ← you are here
-├── SKILL.md                 ← agent instructions
-├── QUICKREF.md              ← command reference
-├── INSTALLATION_GUIDE.md    ← detailed setup
-├── references/
-│   ├── NAMESPACES.md        ← all namespaces + schemas
-│   ├── SCRIPTS.md           ← full script docs
-│   ├── REMINDERS.md         ← cron setup
-│   └── ARCHITECTURE.md      ← design decisions
-└── scripts/
-    ├── memory-set.sh        ← save (with staleness detection)
-    ├── memory-get.sh        ← get (increments reinforce)
-    ├── memory-sync.sh      ← Redis → local cache
-    ├── memory-rank.sh       ← scored retrieval
-    ├── memory-list.sh       ← list with filters
-    ├── memory-healthcheck.sh
-    └── check-reminders.sh   ← cron-only reminder checker
-```
-
-Memory lives in Redis (cloud) + local cache (fast). Stories and reinforce data live in `ron:story:*` and `ron:reinforce:*` namespaces.
-
----
-
-## Namespaces
-
-| Namespace | What it stores | TTL |
-|-----------|---------------|-----|
-| `user` | Your personal data | permanent |
-| `family` | Family members | permanent |
-| `story` | Life moments ✨ | permanent |
-| `contact` | People you know | permanent |
-| `vehicle` | Cars, bikes | permanent |
-| `project` | Projects | permanent |
-| `pref` | Preferences | 30 days |
-| `reminder` | Time-critical tasks | 7 days |
-| `reinforce` | Access tracking | 7 days |
-| `archive` | Dormant entries | permanent |
-
-The `story:*` namespace is what sets v3 apart — it's not just facts, it's the moments that make someone *them*.
-
----
-
-## Upgrading from v2
-
-```bash
-cd ~/.openclaw/skills/ron-memory
-./scripts/memory-migrate-v2-to-v3.sh --dry-run   # preview first
-./scripts/memory-migrate-v2-to-v3.sh --force     # then migrate
+├── SKILL.md                 ← full agent instructions
+├── CHANGELOG.md             ← version history
+├── ron_memory/              ← Python core (stdlib only)
+│   ├── config.py            ← loads .env.ron-memory
+│   ├── tiers.py             ← tier detection + TTL math
+│   ├── jsonio.py            ← safe JSON encode/decode
+│   ├── core.py              ← Redis + cache I/O
+│   ├── search.py            ← keyword search + rank
+│   ├── prune.py             ← TTL enforcement
+│   ├── sync.py              ← Redis → local cache
+│   ├── consolidate.py       ← episodic → semantic merging
+│   └── cli.py               ← argparse-based subcommands
+├── scripts_v4_shims/        ← bash wrappers for backward compat
+│   ├── memory.sh            ← exec python3 -m ron_memory.cli "$@"
+│   ├── memory-set.sh
+│   ├── memory-get.sh
+│   └── ... (one per verb)
+├── tests/                   ← 51 unit tests, all green
+└── archive/v3-bash-scripts/ ← old v3 bash (kept for reference)
 ```
 
 ---
 
-*Built for Heyron Agent Jam #1 — May 2026*
+## Memory Tiers
+
+| Tier | TTL | Default importance | Use for |
+|------|-----|--------------------|---------|
+| `anchored:*` | permanent | 80 | Family birthdays, core identity, never-forget |
+| `semantic:*` | 90 days | 50 | Preferences, relationships, important facts |
+| `episodic:*` | 30 days | 50 | Specific events, conversations, decisions |
+| `reminder:*` | 7 days | 50 | Time-critical tasks |
+| `working:*` | 1 day | 50 | Current context, "what's happening now" |
+
+**Key prefix determines tier automatically.** `anchored:sam_birthday` is anchored. `episodic:trip_lakes` is episodic. Legacy namespaces (`family:`, `user:`, `project:`, etc.) still work and map to the right tier.
+
+---
+
+## Upgrading from v3
+
+v4 is wire-compatible with v3. Existing data in Upstash works without changes. Old `memory-X.sh` scripts are kept as bash shims in `scripts_v4_shims/` — they'll redirect to the Python CLI transparently.
+
+To go fully native: skip the shims and call `python3 -m ron_memory.cli <verb> [args]` directly.
+
+---
+
+## What v4 deliberately doesn't do
+
+- **No new features.** v4 is a faithful port of v3 minus the bugs. Embeddings, dream, synthesis, and links were moved to `archive/` for v5.
+- **No `pip install` dependencies.** Stdlib only.
+- **No token rotation.** The exposed TOKEN in the old v3 bash files is a separate problem; the v4 core reads from `.env.ron-memory` only.
+
+---
+
+*Built for Heyron Agent Jam #1 — May 2026. v4 Python rewrite — June 2026.*

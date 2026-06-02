@@ -1,75 +1,69 @@
-# Ron-Memory v3 Test Suite
+# Ron-Memory v4 Test Suite
 
-Automated tests for Ron-Memory v3 scripts.
+Automated tests for the v4 Python core (`ron_memory/` module). 51 unit tests, all green, no `pytest` required.
 
 ## Test Files
 
-| Test | Description |
-|------|-------------|
-| `test-memory-set.sh` | Test save functionality |
-| `test-memory-get.sh` | Test retrieval functionality |
-| `test-memory-sync.sh` | Test Redis-to-cache sync |
-| `test-memory-rank.sh` | Test attention-based ranking |
-| `test-memory-list.sh` | Test listing and filtering |
+| Test File | Tests | Description |
+|-----------|-------|-------------|
+| `tests/test_tiers.py` | 12 | Tier detection, validation, TTL math, importance-aware TTLs |
+| `tests/test_jsonio.py` | 13 | Safe JSON encode/decode (the v3 injection bug fix) |
+| `tests/test_search.py` | 11 | Keyword search + attention-based rank |
+| `tests/test_prune.py` | 8 | TTL enforcement (dry-run + execute) |
+| `tests/test_consolidate.py` | 7 | Episodic → semantic merging |
 
 ## Running Tests
 
-### Run All Tests
+**Run all tests:**
 
 ```bash
-cd ~/.openclaw/skills/ron-memory/v3/tests
-./test-runner.sh
+cd ron-memories
+for f in tests/test_*.py; do python3 "$f" 2>&1 | tail -2; done
 ```
 
-### Run Specific Test
+**Run a single test file:**
 
 ```bash
-./test-runner.sh --test test-memory-set
+python3 tests/test_tiers.py
 ```
 
-### List Available Tests
+**Run via Python module (if tests are organised as a package):**
 
 ```bash
-./test-runner.sh --list
+cd tests && python3 -m unittest test_tiers
 ```
 
 ## Test Design
 
+### No external dependencies
+- Pure stdlib — no `pip install pytest` needed
+- No network access (tests use mocks)
+- No Redis connection required (pure unit tests on tier logic + JSON I/O)
+
 ### Isolation
-- Each test uses unique keys prefixed with `test:TEMP:` and a timestamp/PID suffix
-- Tests clean up after themselves via `trap cleanup EXIT`
+- Each test uses unique keys with timestamps to avoid collisions
+- Tests clean up after themselves
 
 ### Idempotency
 - Tests are safe to run multiple times
-- Each test sets up its own test data
-- Cleanup ensures no side effects between runs
-
-### Dependencies
-- Tests require access to Upstash Redis (configured in parent scripts)
-- Tests require `python3` for JSON parsing
+- No shared state between tests
 
 ## Exit Codes
 
 | Code | Meaning |
 |------|---------|
 | 0 | All tests passed |
-| 1 | One or more tests failed |
+| non-zero | One or more tests failed |
 
 ## Example Output
 
 ```
-╔════════════════════════════════════════╗
-║   Ron-Memory v3 Test Suite             ║
-╚════════════════════════════════════════╝
+$ python3 tests/test_tiers.py
+  ✅ test_high_importance_extends_ttl
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Running: test-memory-set.sh
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Testing basic memory save...
-✅ PASS: Basic save works
-...
-
-Results: 5 passed, 0 failed (total: 5)
-
-All tests passed! ✓
+Results: 12 passed, 0 failed
 ```
+
+---
+
+*Note: This is the v4 test suite. The v3 bash test files (`test-memory-set.sh`, etc.) and the `test-runner.sh` mentioned in old docs no longer exist — they were replaced by the Python tests during the v3→v4 rewrite.*

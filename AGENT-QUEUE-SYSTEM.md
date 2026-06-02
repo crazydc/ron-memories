@@ -7,17 +7,17 @@ A shared task queue system using Ron-Memory as the backbone. Tasks are queued by
 **Add a task:**
 ```bash
 # Write task to Dave's queue
-bash /root/.openclaw/skills/ron-memory/scripts/memory-set.sh "agent-dev-queue" '[{"id":"task-001","task":"Your task description","created":"2026-05-26T21:00:00Z","priority":"normal"}]' --stale-ok
+memory set "agent-dev-queue" '[{"id":"task-001","task":"Your task description","created":"2026-05-26T21:00:00Z","priority":"normal"}]' --stale-ok
 ```
 
 **Check a queue:**
 ```bash
-bash /root/.openclaw/skills/ron-memory/scripts/memory-get.sh "agent-dev-queue"
+memory get "agent-dev-queue"
 ```
 
 **Clear a queue:**
 ```bash
-bash /root/.openclaw/skills/ron-memory/scripts/memory-set.sh "agent-dev-queue" "[]" --stale-ok
+memory set "agent-dev-queue" "[]" --stale-ok
 ```
 
 ---
@@ -134,7 +134,7 @@ Keep messages short, no markdown tables. Report back when done.
 **Agent:** TechSupport
 
 ```bash
-bash /root/.openclaw/skills/ron-memory/scripts/memory-set.sh "agent-support-queue" '[{"id":"weather-001","task":"Check weather for Greenfield Family Park tomorrow (Wed May 27)","created":"2026-05-26T21:30:00Z","priority":"normal"}]' --stale-ok
+memory set "agent-support-queue" '[{"id":"weather-001","task":"Check weather for Greenfield Family Park tomorrow (Wed May 27)","created":"2026-05-26T21:30:00Z","priority":"normal"}]' --stale-ok
 ```
 
 TechSupport picks it up on next heartbeat, sends you the weather, logs it, clears queue.
@@ -150,4 +150,4 @@ TechSupport picks it up on next heartbeat, sends you the weather, logs it, clear
 
 ---
 
-_Last updated: 2026-05-26_
+_Last updated: 2026-05-26 (v4 update: 2026-06-02)_

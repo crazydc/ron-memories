@@ -1,4 +1,4 @@
-# Ron-Memory v3 — Installation Guide
+# Ron-Memory v4 — Installation Guide
 
 > **Friendly note:** This guide is for everyone. If you can use a terminal and follow steps, you can do this. Don't overthink it. 🚀
 
@@ -25,11 +25,10 @@ You, if you:
 
 | Requirement | Why | How |
 |---|---|---|
-| Bash terminal | Runs the setup scripts | Built into macOS/Linux |
+| Python 3.8+ | Runs the v4 Python core | Pre-installed on macOS/Linux |
+| Bash terminal | Runs setup + wrapper | Built into macOS/Linux |
 | Upstash Redis | Cloud database for storing memories | Free at [upstash.com](https://upstash.com) |
-| ~10 minutes | To run through setup | Takes longer if you multitask |
-
----
+| ~5 minutes | To run through setup | Takes longer if you multitask |
 
 ### How the pieces fit together
 
@@ -42,7 +41,7 @@ You, if you:
 
 **Upstash Redis** is your memory database — a cloud notepad your assistant reads from and writes to.
 
-**Cron** is the reminder clock — checks every 5 minutes, even when no one's chatting.
+**No external Python packages.** v4 uses only the Python standard library — no `pip install` required.
 
 ---
 
@@ -69,73 +68,117 @@ In your new database, click the **Connect** tab. You'll see two things you need:
 
 ---
 
-## Step 3: Run the Automated Setup
-
-Run the interactive setup script — it handles everything:
+## Step 3: Install Ron-Memory v4
 
 ```bash
-cd ~/.openclaw/skills/ron-memory/v3
-bash scripts/memory-setup.sh
+# Clone the v4 branch
+git clone https://github.com/crazydc/ron-memories.git
+cd ron-memories
+git checkout v4-python-core
 ```
 
-The script will:
-
-```
-  1/5 — Ask for your Redis URL and Token
-  2/5 — Set up the reminder cron job
-  3/5 — Create the local cache folders
-  4/5 — Verify everything works
-  5/5 — Tell you it's ready
-```
-
-When it asks for your Redis URL and Token — paste what you copied from Upstash.
+No build step. No `pip install`. The Python core uses only the standard library.
 
 ---
 
-## Step 4: Try It! 🎯
+## Step 4: Configure Your Credentials
+
+Create `.env.ron-memory` in your workspace directory:
+
+```bash
+cat > ~/.openclaw/workspace/.env.ron-memory <<'EOF'
+UPSTASH_REDIS_REST_URL=https://your-db.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your-token-here
+EOF
+```
+
+(Replace the URL and token with what you copied from Upstash.)
+
+---
+
+## Step 5: (Optional) Install the `memory` Wrapper
+
+For daily use, the `memory` wrapper is way nicer than typing `python3 -m ron_memory.cli` every time:
+
+```bash
+# Symlink the wrapper into your scripts dir
+ln -s "$(pwd)/scripts_v4_shims/memory.sh" ~/.openclaw/workspace/scripts/memory
+
+# Make sure your scripts dir is on PATH
+export PATH="$HOME/.openclaw/workspace/scripts:$PATH"
+```
+
+You can now use `memory` from anywhere instead of `python3 -m ron_memory.cli`.
+
+---
+
+## Step 6: Verify It Works
+
+```bash
+memory status
+```
+
+You should see:
+
+```
+🔍 Ron-Memory v4 Status
+========================================
+Redis:           ✅ connected
+Redis keys:      <N>
+Cache file:      ✅
+Migration done:  ✅
+Write test:      ✅
+```
+
+If you see all green checkmarks — **it's working!** Your AI assistant now has persistent memory. 🧠
+
+---
+
+## Step 7: Try It Out
 
 Save your first memory:
 
 ```bash
-bash ~/.openclaw/skills/ron-memory/v3/scripts/memory-set.sh user:first-test "hello world"
+memory set anchored:first_test "hello world"
 ```
 
 Read it back:
 
 ```bash
-bash ~/.openclaw/skills/ron-memory/v3/scripts/memory-get.sh user:first-test
+memory get anchored:first_test
+# → hello world
 ```
 
-You should see `hello world`. 
-
-If you do — **it's working!** Your AI assistant now has persistent memory. 🧠
+If you see `hello world` — you're done. Welcome to persistent memory. 🎉
 
 ---
 
 ## Tips & Warnings
 
-> 💡 **Tip:** Your Redis URL and Token are saved in `~/.openclaw/.env.ron-memory`. You only need to enter them once.
+> 💡 **Tip:** Your Redis URL and Token are saved in `~/.openclaw/workspace/.env.ron-memory`. You only need to enter them once. The v4 core reads from this single file — no hardcoded credentials anywhere else.
 
-> ⚠️ **Reminder cron:** The setup script will ask if you want to enable the reminder cron. Say **yes** — this is what lets your assistant ping you about things at the right time.
+> ⚠️ **No cron needed for v4.** v3 used a 5-minute cron for reminders; v4 is a pure read/write library. If you want cron-based reminders, you can set them up using OpenClaw's cron feature, but it's not required for the basic skill.
 
-> 💡 **Upgrading from v2:** If you had v2, just re-run `memory-setup.sh`. Your existing memories are automatically detected and kept.
+> 💡 **Upgrading from v3:** Just `git checkout v4-python-core` — your existing data in Upstash works without changes. v3 bash scripts are kept as shims in `scripts_v4_shims/` for backward compat.
 
 ---
 
 ## Common Issues
 
 | Problem | Fix |
-|---|---|
-| "Redis connection failed" | Double-check your URL and Token are correct |
-| "Permission denied" | Run `chmod +x scripts/*.sh` in the ron-memory folder |
-| Reminders not firing | Check cron: `crontab -l | grep ron` |
+|---------|-----|
+| "Redis connection failed" | Double-check your URL and Token are correct in `.env.ron-memory` |
+| "ModuleNotFoundError: No module named 'ron_memory'" | Make sure you're running from the repo root, or that `PYTHONPATH` includes the repo |
+| `memory: not found` (after wrapper install) | Add `~/.openclaw/workspace/scripts` to your PATH |
+| Old v3 scripts don't work | They should — they're shimmed in `scripts_v4_shims/`. If not, run them directly: `python3 -m ron_memory.cli <verb> <args>` |
 
 ---
 
 ## Questions?
 
 - Full docs: `README.md`
-- Script reference: `references/SCRIPTS.md`
-- Architecture notes: `references/ARCHITECTURE.md`
+- Agent instructions: `SKILL.md`
+- Quick reference: `QUICKREF.md`
+- Design doc (in your workspace): `docs/RON-MEMORY-V4-DESIGN.md`
 
 Happy remembering! 🧠

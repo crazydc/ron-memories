@@ -1,5 +1,13 @@
 # Reminder System Setup
 
+> **⚠️ v3 feature documentation.** The `check-reminders.sh` cron script described here was a v3 feature. v4 is a library, not a service — it doesn't ship a built-in reminder cron. To set up reminders in v4, use OpenClaw's cron feature, a system cron entry that calls `memory list --namespace reminder`, or your own scheduler. The v4 way to store a reminder is:
+>
+> ```bash
+> memory set "reminder:dentist:appointment" "Call dentist to confirm" --context '{"due": "2026-05-15T14:00:00Z"}'
+> ```
+>
+> You then build your own cron to check for due reminders. v4 just gives you the storage; the scheduling is up to you.
+
 Reminders are time-critical in Ron-Memory v3. Unlike other memories (synced via heartbeat), reminders need their own dedicated cron to ensure they're never missed.
 
 ## Why Dedicated Cron?

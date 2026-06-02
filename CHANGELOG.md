@@ -68,6 +68,25 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 ---
 
+## [4.0.0] - 2026-06-02
+
+### Changed (docs)
+
+- **README.md** — Rewrote install steps and command examples to use v4 `memory` wrapper and Python CLI. Removed v3-only setup script (`memory-setup.sh`) references.
+- **QUICKREF.md** — Rewrote as v4 one-page cheat sheet (tiers, key patterns, troubleshooting).
+- **INSTALLATION_GUIDE.md** — Rewrote end-to-end install for v4: `git clone` + `git checkout v4-python-core` + `.env.ron-memory` + optional wrapper symlink.
+- **AGENT-QUEUE-SYSTEM.md** — Updated command examples from v3 `memory-X.sh` paths to v4 `memory` wrapper.
+
+### Deprecated (docs)
+
+- **references/ARCHITECTURE.md** — v3 architecture doc, kept for historical reference. v4 architecture is in `SKILL.md`.
+- **references/STORIES.md** — v3 stories feature. v4 stores life moments under `semantic:` / `episodic:` tiers.
+- **references/REMINDERS.md** — v3 reminder cron. v4 is a library, not a service — use OpenClaw cron for scheduling.
+- **references/SCRIPTS.md** — v3 script reference, replaced by redirect stub pointing to `SKILL.md`.
+- **tests/README.md** — v3 bash test suite. Replaced with v4 Python test documentation.
+
+---
+
 ## Prior Art
 
 Ron-Memory was inspired by:
