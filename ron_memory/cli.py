@@ -62,11 +62,49 @@ def cmd_get(args: argparse.Namespace) -> int:
         else:
             print(f"Key not found: {args.key}")
         return 1
+    # Auto-touch: bump importance by 1 on read. The whole point of
+    # importance is "stuff I keep looking at stays important". Silent.
+    if not args.no_touch:
+        _touch(m, args.key, bump=1)
     if args.json:
         print(json.dumps({"status": "ok", "key": args.key, "value": value}))
     else:
         print(value)
     return 0
+
+
+def _touch(m, key: str, bump: int = 1) -> int:
+    """Bump importance by `bump`, capped at 100. No-op if key absent.
+
+    Returns new importance, or 0 if key not found. Used internally by
+    get/search/rank to implement access-based importance. Exposed as
+    `memory touch` for manual use.
+    """
+    from .tiers import validate_importance
+    # Read current importance from cache (cheap)
+    entries = m.cache_entries()
+    current = None
+    for e in entries:
+        if e.get("key") == key:
+            current = e.get("importance", 50)
+            break
+    if current is None:
+        return 0
+    new = min(100, max(1, current + bump))
+    if new == current:
+        return new
+    # Write back. We need the current value to avoid staleness rejection
+    # when the value hasn't changed.
+    current_value = m.get(key)
+    if current_value is None:
+        return 0
+    m.set(
+        key=key,
+        value=current_value,
+        importance=new,
+        force=True,  # we're updating metadata, not the value itself
+    )
+    return new
 
 
 def cmd_delete(args: argparse.Namespace) -> int:
@@ -147,6 +185,10 @@ def cmd_search(args: argparse.Namespace) -> int:
         limit=args.limit,
         namespace_filter=args.namespace,
     )
+    # Auto-touch: bump importance by 1 for each result returned.
+    if not args.no_touch and results:
+        for r in results:
+            _touch(m, r["key"], bump=1)
     if args.json:
         print(json.dumps(results, indent=2))
     else:
@@ -172,6 +214,10 @@ def cmd_rank(args: argparse.Namespace) -> int:
         budget=args.budget,
         namespaces=namespaces,
     )
+    # Auto-touch: bump importance by 1 for each result returned.
+    if not args.no_touch and results:
+        for r in results:
+            _touch(m, r["key"], bump=1)
     if args.json:
         print(json.dumps(results, indent=2))
     else:
@@ -186,14 +232,28 @@ def cmd_rank(args: argparse.Namespace) -> int:
 
 
 def cmd_prune(args: argparse.Namespace) -> int:
+    """⚠️  DESTRUCTIVE. Deletes entries past their TTL. Manual use only.
+
+    The default dream cycle no longer calls this. The recommended
+    alternative is `memory touch` to bump importance of things you care
+    about, and letting low-importance entries fall out of search/rank
+    naturally without losing data.
+
+    Use this only when you specifically need to free up space or
+    remove entries entirely. Pass --force to actually delete.
+    """
+    if not args.force and not args.dry_run:
+        print("⚠️  prune is destructive. This will DELETE entries from Redis.")
+        print("    The dream cycle no longer calls this verb.")
+        print("    Recommended: just let low-importance entries fade out of search.")
+        print()
+        print("    Run with --dry-run first to see what would be deleted,")
+        print("    or with --force to actually delete.")
+        return 2
     m = Memory()
     entries = m.cache_entries()
-
-    # --force implies dry_run=False; otherwise honour --dry-run flag.
-    # Pass an apply_fn so expired entries are actually deleted from Redis.
     def _apply(key: str, entry: dict) -> None:
         m.delete(key)
-
     result = prune_mod.prune(
         entries,
         namespace_filter=args.namespace or None,
@@ -215,6 +275,32 @@ def cmd_prune(args: argparse.Namespace) -> int:
         if result['dry_run']:
             print()
             print("Run with --force to actually delete expired entries.")
+    return 0
+
+
+def cmd_touch(args: argparse.Namespace) -> int:
+    """Bump an entry's importance. Floor 1, ceiling 100.
+
+    Default bump is 5. Use larger bumps to mark a memory as critically
+    important, or use this verb after re-reading a memory to keep it
+    surfaced in future searches.
+
+    Auto-touching also happens silently on every `memory get`,
+    `memory search`, and `memory rank` (bump=1). This verb is for manual
+    or larger adjustments.
+    """
+    m = Memory()
+    new = _touch(m, args.key, bump=args.bump)
+    if new == 0:
+        if args.json:
+            print(json.dumps({"status": "not_found", "key": args.key}))
+        else:
+            print(f"Key not found: {args.key}")
+        return 1
+    if args.json:
+        print(json.dumps({"status": "ok", "key": args.key, "importance": new}))
+    else:
+        print(f"👆 Touched '{args.key}' (importance now {new})")
     return 0
 
 
@@ -495,6 +581,7 @@ def build_parser() -> argparse.ArgumentParser:
     # get
     p_get = sub.add_parser("get", help="Retrieve a memory")
     p_get.add_argument("key")
+    p_get.add_argument("--no-touch", action="store_true", help="Don't bump importance on read")
     p_get.add_argument("--json", action="store_true")
     p_get.set_defaults(func=cmd_get)
 
@@ -521,6 +608,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_search.add_argument("query")
     p_search.add_argument("--limit", type=int, default=10)
     p_search.add_argument("--namespace", help="Filter by namespace prefix")
+    p_search.add_argument("--no-touch", action="store_true", help="Don't bump importance on hit")
     p_search.add_argument("--json", action="store_true")
     p_search.set_defaults(func=cmd_search)
 
@@ -530,16 +618,24 @@ def build_parser() -> argparse.ArgumentParser:
     p_rank.add_argument("--limit", type=int, default=20)
     p_rank.add_argument("--budget", type=int, default=2000)
     p_rank.add_argument("--namespaces", help="Comma-separated namespace filter")
+    p_rank.add_argument("--no-touch", action="store_true", help="Don't bump importance on hit")
     p_rank.add_argument("--json", action="store_true")
     p_rank.set_defaults(func=cmd_rank)
 
-    # prune
-    p_prune = sub.add_parser("prune", help="TTL enforcement (dry-run by default)")
+    # prune — DESTRUCTIVE. Manual use only. Dream cycle does not call this.
+    p_prune = sub.add_parser("prune", help="⚠️  DESTRUCTIVE: delete expired entries (manual only)")
     p_prune.add_argument("--namespace", help="Only prune this namespace")
     p_prune.add_argument("--dry-run", action="store_true")
     p_prune.add_argument("--force", action="store_true", help="Actually delete expired entries")
     p_prune.add_argument("--json", action="store_true")
     p_prune.set_defaults(func=cmd_prune)
+
+    # touch — bump importance manually
+    p_touch = sub.add_parser("touch", help="Bump an entry's importance (1-100)")
+    p_touch.add_argument("key")
+    p_touch.add_argument("--bump", type=int, default=5, help="How much to add (default 5, cap 100)")
+    p_touch.add_argument("--json", action="store_true")
+    p_touch.set_defaults(func=cmd_touch)
 
     # sync
     p_sync = sub.add_parser("sync", help="Sync Redis -> local cache")

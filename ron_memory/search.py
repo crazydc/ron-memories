@@ -53,6 +53,12 @@ def search(
     """Search entries by keyword match against key + value.
 
     Returns a list of (entry, score) dicts sorted by descending score.
+
+    Scoring: keyword overlap (5/word) + tier boost + recency + importance.
+    Importance is the dominant long-term signal: a high-importance entry
+    outranks a tier-promoted one, so "the fun entries" doesn't
+    crowd "details about Alex's current work" just because the kids entry
+    was last touched today.
     """
     query_tokens = _tokenize(query)
     if not query_tokens:
@@ -71,10 +77,14 @@ def search(
         overlap = query_tokens & haystack
         if not overlap:
             continue
-        # Score: matches + tier boost + recency
+        # Score: matches + tier boost + recency + importance
         score = len(overlap) * 5
         tier = entry.get("tier", "semantic")
         score += TIER_BOOST.get(tier, 5)
+        # Importance boost (0-30, scaled from importance 1-100)
+        importance = entry.get("importance", 50)
+        if importance is not None:
+            score += int(importance * 0.3)
         # Recency boost (last 30 days)
         age = _age_days(entry.get("timestamp", ""))
         if age < 7:
@@ -127,6 +137,10 @@ def rank(
         # Tier boost
         tier = entry.get("tier", ns)  # legacy: ns is also the tier
         score += TIER_BOOST.get(tier, 5)
+        # Importance boost (0-30, scaled from importance 1-100)
+        importance = entry.get("importance", 50)
+        if importance is not None:
+            score += int(importance * 0.3)
         # Namespace keyword match
         if ns in matched_namespaces:
             score += 15
