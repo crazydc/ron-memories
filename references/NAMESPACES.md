@@ -410,7 +410,7 @@ ron:story:work_milestone:title = "Shipped your docs project"
 ron:story:work_milestone:description = "First time seeing Heyron docs live — felt proper"
 ron:story:work_milestone:date = "2026-05-08"
 
-ron:story:dog_moment:title = "Buddy learned to catch"
+ron:story:dog_moment:title = "Cooper learned to catch"
 ron:story:dog_moment:description = "Finally learned to catch a frisbee, proper proud of him"
 ron:story:dog_moment:date = "2024-07-15"
 ```

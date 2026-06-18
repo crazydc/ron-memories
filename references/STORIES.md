@@ -12,7 +12,7 @@ Stories are the soul of memory. They transform dry data into something worth rem
 |------|-------|
 | "Sam's birthday is April 15" | "Sam tried to blow out 5 candles but could only manage 3 — kept trying anyway" |
 | "We went to coast" | "Sam called every castle a 'treasure castle' and made us say it back to him" |
-| "Buddy is a Labrador" | "Buddy learned to catch a frisbee on his 5th birthday — we all cheered like idiots" |
+| "Cooper is a Labrador" | "Cooper learned to catch a frisbee on his 5th birthday — we all cheered like idiots" |
 
 **Facts** answer: *what is it?*
 **Stories** answer: *what happened, and why does it matter?*
@@ -29,7 +29,7 @@ ron:fact:holiday_destination = "coast"
 # STORY — rich, emotional, memorable
 ron:story:holiday_2025:title = "coast road trip"
 ron:story:holiday_2025:description = "Sam called every castle a 'treasure castle'. We played along for three weeks."
-ron:story:holiday_2025:moment = "Stopped at a random loch. Buddy swam for an hour. Nobody wanted to leave."
+ron:story:holiday_2025:moment = "Stopped at a random loch. Cooper swam for an hour. Nobody wanted to leave."
 ```
 
 ## When to Use the `story:` Namespace
@@ -67,7 +67,7 @@ ron:story:<theme>:<instance>:<aspect>
 | Level | Meaning | Example |
 |-------|---------|---------|
 | `ron:story:` | Stories namespace | `ron:story:` |
-| `<theme>` | What the story is about | `holiday_2025`, `wedding`, `the game-mrs` |
+| `<theme>` | What the story is about | `holiday_2025`, `wedding`, `strategy-game` |
 | `<instance>` | Which specific occurrence | `session_2026_05_02`, `trip_001` |
 | `<aspect>` | What aspect of the story | `title`, `description`, `moment`, `players` |
 
@@ -75,7 +75,7 @@ ron:story:<theme>:<instance>:<aspect>
 
 - `holiday_2025` — summer vacation
 - `wedding` — someone's wedding (could add year: `wedding_2024`)
-- `the game-mrs` — board game nights with the a strategy board game group
+- `strategy-game` — board game nights with the a strategy board game group
 - `work-milestone` — career achievements
 - `family-moment` — everyday moments worth preserving
 - `pet-moment` — things the dog/cat did
@@ -124,45 +124,45 @@ Nothing in memory yet.
 
 ### During the conversation
 
-You might say: "remember Alex played a strategy board game with two friends on May 2nd, Buddy needed letting out mid-game"
+You might say: "remember Alex played a strategy board game with two friends on May 2nd, Cooper needed letting out mid-game"
 
 ### What gets stored
 
 ```bash
 # The title — how you'd refer to this story later
-memory-set.sh "story:the game-mrs:session_2026_05_02:title" "a strategy board game game night"
+memory-set.sh "story:strategy-game:session_2026_05_02:title" "a strategy board game game night"
 
 # Who was there
-memory-set.sh "story:the game-mrs:session_2026_05_02:players" "Alex, two friends"
+memory-set.sh "story:strategy-game:session_2026_05_02:players" "Alex, two friends"
 
 # The date
-memory-set.sh "story:the game-mrs:session_2026_05_02:date" "2026-05-02"
+memory-set.sh "story:strategy-game:session_2026_05_02:date" "2026-05-02"
 
 # The highlight — the memorable bit
-memory-set.sh "story:the game-mrs:session_2026_05_02:moment" "Buddy the dog needed letting out mid-game, Alex had to pause the entire railway empire to let him out"
+memory-set.sh "story:strategy-game:session_2026_05_02:moment" "Cooper the dog needed letting out mid-game, Alex had to pause the entire railway empire to let him out"
 
 # Optional: tags for emotional context
-memory-set.sh "story:the game-mrs:session_2026_05_02:emotional_tags" "funny,chaotic,family"
+memory-set.sh "story:strategy-game:session_2026_05_02:emotional_tags" "funny,chaotic,family"
 
 # Optional: description for more context
-memory-set.sh "story:the game-mrs:session_2026_05_02:description" "Regular board game night at Alex's. the friend brought his new new expansion. Game went on for 4 hours. Buddy kept interrupting."
+memory-set.sh "story:strategy-game:session_2026_05_02:description" "Regular board game night at Alex's. the friend brought his new new expansion. Game went on for 4 hours. Cooper kept interrupting."
 ```
 
 ### Later — when reminiscing
 
 Someone asks: "remember any funny game nights?"
 
-Memory retrieves `story:the game-mrs:*` keys, sees the +20 bonus, and surfaces:
+Memory retrieves `story:strategy-game:*` keys, sees the +20 bonus, and surfaces:
 
 > **a strategy board game game night**
-> "Buddy the dog needed letting out mid-game, Alex had to pause the entire railway empire to let him out"
+> "Cooper the dog needed letting out mid-game, Alex had to pause the entire railway empire to let him out"
 > Alex, two friends — 2026-05-02
 
 ### Even Later — years from now
 
 Sam's grown up, you ask: "what was that game night like?"
 
-You pull up all `story:the game-mrs:*` stories and have a conversation about the time Dad paused a railway empire for a dog.
+You pull up all `story:strategy-game:*` stories and have a conversation about the time Dad paused a railway empire for a dog.
 
 ## More Story Examples
 
@@ -173,7 +173,7 @@ You pull up all `story:the game-mrs:*` stories and have a conversation about the
 # Instance: trip_001
 story:holiday_2025:trip_001:title = "Summer coast road trip"
 story:holiday_2025:trip_001:description = "Two weeks driving up the east coast. Stopped everywhere. Sam had a phase of naming every castle a treasure castle."
-story:holiday_2025:trip_001:moment = "Random loch at golden hour. Buddy swam for an hour straight. Nobody wanted to leave."
+story:holiday_2025:trip_001:moment = "Random loch at golden hour. Cooper swam for an hour straight. Nobody wanted to leave."
 story:holiday_2025:trip_001:date = "2025-08-10"
 story:holiday_2025:trip_001:players = "Alex, Pat, Sam, Riley, Cooper"
 story:holiday_2025:trip_001:location = "coast, UK"
@@ -192,7 +192,7 @@ story:work-milestone:your-docs:emotional_tags = "proud,relief,achievement"
 ### A Pet Moment
 
 ```bash
-story:pet:buddy:catch_2024:title = "Buddy learned to catch"
+story:pet:buddy:catch_2024:title = "Cooper learned to catch"
 story:pet:buddy:catch_2024:moment = "Finally caught a frisbee on his 5th birthday. We all cheered like idiots in the garden."
 story:pet:buddy:catch_2024:date = "2024-07-15"
 story:pet:buddy:catch_2024:emotional_tags = "proud,funny,love"

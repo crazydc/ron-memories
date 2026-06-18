@@ -375,7 +375,7 @@ do_gaps() {
     
     # Known important topics
     declare -a important_topics=(
-        "heyron" "perforce" "louisegym" "sam" "louise"
+        "heyron" "perforce" "fitness-app" "sam" "pat"
         "family" "holiday" "career" "health" "projects"
     )
     

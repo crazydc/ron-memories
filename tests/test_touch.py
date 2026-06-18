@@ -12,7 +12,7 @@ from ron_memory.search import search, rank  # noqa: E402
 # different importance. High-importance should rank first.
 SAMPLE = [
     {"key": "user:kids:sam:park", "value": "Took Sam to the park on Sunday", "tier": "semantic", "importance": 10, "timestamp": "2026-05-27T10:00:00Z"},
-    {"key": "anchored:acasey:work", "value": "Currently working on Perforce Code Review and fitness-app", "tier": "anchored", "importance": 90, "timestamp": "2026-05-27T10:00:00Z"},
+    {"key": "anchored:acasey:work", "value": "Currently working on the work agent Code Review and fitness-app", "tier": "anchored", "importance": 90, "timestamp": "2026-05-27T10:00:00Z"},
     {"key": "episodic:park_2026", "value": "Took Sam to the park on Sunday. It rained.", "tier": "episodic", "importance": 30, "timestamp": "2026-05-27T10:00:00Z"},
 ]
 

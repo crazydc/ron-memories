@@ -341,7 +341,7 @@ Based on current Sam memories, I don't know:
 - How he's doing at school
 GAP
             ;;
-        louise|louisez)
+        pat|patz)
             cat << GAP
 Based on current Pat memories, I don't know:
 - Her career/job details
@@ -501,7 +501,7 @@ COUNTS
     # Detect high-value topics from recent memory
     echo "Based on current memories, consider generating syntheses for:"
     echo "- heyron (Discord bot project)"
-    echo "- family (Sam, Pat, Charlie)"
+    echo "- family (Sam, Pat, Riley)"
     echo "- lakes/holiday (current trip)"
     echo "- ron-memory (self-improvement)"
     

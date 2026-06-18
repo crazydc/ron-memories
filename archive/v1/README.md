@@ -117,18 +117,18 @@ Store once, retrieve on-demand:
 ```
 [HUMAN] → Primary Agent
 "Build your docs project v2. Key features: markdown support, search, dark mode.
- Dave handles code, DevOps handles deployment."
+ the dev agent handles code, DevOps handles deployment."
 
 Primary Agent saves:
   project:your-docs:context = "v2 with markdown, search, dark mode"
   project:your-docs:task:dave = "implement markdown + search + dark mode"
   project:your-docs:task:devops = "deploy to mini PC, configure nginx"
 
-[HUMAN] → "Spawn Dave to work on your docs project"
+[HUMAN] → "Spawn the dev agent to work on your docs project"
 
-Spawn Agent Dave with: "Read project:your-docs tasks, complete the coding tasks"
+Spawn Agent the dev agent with: "Read project:your-docs tasks, complete the coding tasks"
 
-Dave pulls memory → knows exactly what to build
+the dev agent pulls memory → knows exactly what to build
 No context stuffing needed — just targeted retrieval
 ```
 

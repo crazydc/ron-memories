@@ -1,12 +1,12 @@
 # Agent Queue System
 
-A shared task queue system using Ron-Memory as the backbone. Tasks are queued by Jeff (orchestrator), picked up by sub-agents on their heartbeat, executed, and reported back to Alex via Telegram.
+A shared task queue system using Ron-Memory as the backbone. Tasks are queued by the orchestrator, picked up by sub-agents on their heartbeat, executed, and reported back to Alex via Telegram.
 
 ## Quick Start
 
 **Add a task:**
 ```bash
-# Write task to Dave's queue
+# Write task to the dev agent's queue
 memory set "agent-dev-queue" '[{"id":"task-001","task":"Your task description","created":"2026-05-26T21:00:00Z","priority":"normal"}]' --stale-ok
 ```
 
@@ -26,10 +26,10 @@ memory set "agent-dev-queue" "[]" --stale-ok
 
 | Agent | Queue Key | Telegram Bot |
 |-------|-----------|--------------|
-| Jeff (main) | `agent-main-queue` | @main_bot |
-| Dave | `agent-dev-queue` | @dev_bot |
-| TechSupport | `agent-support-queue` | @support_bot |
-| Perforce | `agent-work-queue` | @work_bot |
+| main | `agent-main-queue` | @main_bot |
+| the dev agent | `agent-dev-queue` | @dev_bot |
+| the support agent | `agent-support-queue` | @support_bot |
+| the work agent | `agent-work-queue` | @work_bot |
 
 ---
 
@@ -55,7 +55,7 @@ Multiple tasks are supported - agents process FIFO (first in, first out).
 ## How It Works
 
 ```
-Jeff (orchestrator)
+the orchestrator
     ↓ writes task
 Ron-Memory queue
     ↓ heartbeat triggers (every 5 min)
@@ -88,9 +88,9 @@ Each agent checks their queue on every heartbeat cycle (5 min). When a task exis
 ## Results Log
 
 Each agent logs completed tasks to:
-- `logs/agent-dave-results.md`
-- `logs/agent-techsupport-results.md`
-- `logs/agent-perforce-results.md`
+- `logs/agent-dev-results.md`
+- `logs/agent-support-results.md`
+- `logs/agent-work-results.md`
 - `logs/agent-main-results.md`
 
 Format:
@@ -131,13 +131,13 @@ Keep messages short, no markdown tables. Report back when done.
 ## Example: Adding a Task
 
 **Task:** "Check weather for Greenfield Park tomorrow"
-**Agent:** TechSupport
+**Agent:** the support agent
 
 ```bash
 memory set "agent-support-queue" '[{"id":"weather-001","task":"Check weather for Greenfield Family Park tomorrow (Wed May 27)","created":"2026-05-26T21:30:00Z","priority":"normal"}]' --stale-ok
 ```
 
-TechSupport picks it up on next heartbeat, sends you the weather, logs it, clears queue.
+the support agent picks it up on next heartbeat, sends you the weather, logs it, clears queue.
 
 ---
 

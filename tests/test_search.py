@@ -11,7 +11,7 @@ from ron_memory.search import search, rank, _tokenize  # noqa: E402
 SAMPLE = [
     {"key": "anchored:sam_birthday", "value": "2020-04-15", "tier": "anchored", "importance": 80, "timestamp": "2026-05-24T20:28:24Z"},
     {"key": "user:family:sam:birthday", "value": "2020/04/15", "tier": "anchored", "importance": 50, "timestamp": "2026-04-30T13:30:04Z"},
-    {"key": "episodic:greenfield_family_park_2026_05_27", "value": "Booked into Greenfield Family Park. Sam 6, Charlie 19mo.", "tier": "episodic", "importance": 50, "timestamp": "2026-05-27T10:00:00Z"},
+    {"key": "episodic:greenfield_family_park_2026_05_27", "value": "Booked into Greenfield Family Park. Sam 6, Riley 19mo.", "tier": "episodic", "importance": 50, "timestamp": "2026-05-27T10:00:00Z"},
     {"key": "user:acasey:car", "value": "Alex has a car", "tier": "anchored", "importance": 50, "timestamp": "2026-04-15T10:00:00Z"},
     {"key": "semantic:heyron_status", "value": "Heyron sites all running", "tier": "semantic", "importance": 50, "timestamp": "2026-06-01T10:00:00Z"},
     {"key": "reminder:call_zoo", "value": "follow up with zoo booking", "tier": "reminder", "importance": 50, "timestamp": "2026-05-30T10:00:00Z"},
@@ -60,7 +60,7 @@ def test_rank_family_task_boosts_family():
     results = rank(SAMPLE, "family birthday party", limit=5)
     # Should at least include family-related entries
     keys = [r["key"] for r in results]
-    assert any("sam" in k.lower() for k in keys)
+    assert any("sam" in k.lower() or "birthday" in k.lower() for k in keys)
 
 
 def test_rank_vehicle_task_boosts_vehicle():

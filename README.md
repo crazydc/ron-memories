@@ -2,7 +2,7 @@
 
 **Your AI assistant forgets everything when a session ends. Ron-Memory gives it a second brain.**
 
-You mention your car registration once. Three months later, you ask "what's my car reg?" and get the real answer — not a guess, not a hallucination. Your daughter's birthday. Your wife's anniversary preference. That funny story about Buddy learning to catch a frisbee. It all survives session restarts.
+You mention your car registration once. Three months later, you ask "what's my car reg?" and get the real answer — not a guess, not a hallucination. Your kid's birthday. Your partner's anniversary preference. That funny story about Cooper learning to catch a frisbee. It all survives session restarts.
 
 Ron-Memory stores facts, stories, preferences, and reminders — syncing to Upstash Redis so the same memory is available whether you're chatting from your phone, your laptop, or a fresh session after a restart. Built for [Heyron.ai](https://heyron.ai) and OpenClaw, but works anywhere with Python 3.
 
@@ -10,7 +10,7 @@ Ron-Memory stores facts, stories, preferences, and reminders — syncing to Upst
 
 ## What Makes This Different
 
-**Stories, not just facts.** Ron-Memory stores life moments — the summer road trip to coast, the day you shipped your docs project, that thing Charlie did last week. Because your life isn't just data.
+**Stories, not just facts.** Ron-Memory stores life moments — the summer road trip to coast, the day you shipped your docs project, that thing Riley did last week. Because your life isn't just data.
 
 **Tiered memory with real TTLs.** Permanent (`anchored:*`) for family and identity, 90-day (`semantic:*`) for preferences, 30-day (`episodic:*`) for events, 7-day (`reminder:*`) for time-critical tasks, 1-day (`working:*`) for current context. Old memories prune themselves, important ones stick.
 
