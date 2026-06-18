@@ -402,7 +402,7 @@ Run migration scripts to reorganize existing keys.
 Life moments worth reminiscing — not functionally useful, just human.
 ```
 ron:story:holiday_2025:title = "Summer road trip with the family"
-ron:story:holiday_2025:description = "Drove up to coast, saw castles, Sam loved the castles"
+ron:story:holiday_2025:description = "Drove up to the coast, saw castles, Sam loved the castles"
 ron:story:holiday_2025:date = "2025-08-10"
 ron:story:holiday_2025:emotional_tags = "happy,adventure,family"
 

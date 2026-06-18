@@ -10,7 +10,7 @@ Ron-Memory stores facts, stories, preferences, and reminders — syncing to Upst
 
 ## What Makes This Different
 
-**Stories, not just facts.** Ron-Memory stores life moments — the summer road trip to coast, the day you shipped your docs project, that thing Riley did last week. Because your life isn't just data.
+**Stories, not just facts.** Ron-Memory stores life moments — the summer road trip to the coast, the day you shipped your docs project, that thing Riley did last week. Because your life isn't just data.
 
 **Tiered memory with real TTLs.** Permanent (`anchored:*`) for family and identity, 90-day (`semantic:*`) for preferences, 30-day (`episodic:*`) for events, 7-day (`reminder:*`) for time-critical tasks, 1-day (`working:*`) for current context. Old memories prune themselves, important ones stick.
 
@@ -69,7 +69,7 @@ You don't need to format it specially. Just talk.
 ```bash
 git clone https://github.com/crazydc/ron-memories.git
 cd ron-memories
-git checkout v4-python-core
+git checkout main
 ```
 
 **Step 2 — Set up Redis credentials:**

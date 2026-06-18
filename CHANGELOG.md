@@ -74,7 +74,7 @@ All notable changes are documented here. Format follows [Keep a Changelog](https
 
 - **README.md** — Rewrote install steps and command examples to use v4 `memory` wrapper and Python CLI. Removed v3-only setup script (`memory-setup.sh`) references.
 - **QUICKREF.md** — Rewrote as v4 one-page cheat sheet (tiers, key patterns, troubleshooting).
-- **INSTALLATION_GUIDE.md** — Rewrote end-to-end install for v4: `git clone` + `git checkout v4-python-core` + `.env.ron-memory` + optional wrapper symlink.
+- **INSTALLATION_GUIDE.md** — Rewrote end-to-end install for v4: `git clone` + `git checkout main` + `.env.ron-memory` + optional wrapper symlink.
 - **AGENT-QUEUE-SYSTEM.md** — Updated command examples from v3 `memory-X.sh` paths to v4 `memory` wrapper.
 
 ### Deprecated (docs)

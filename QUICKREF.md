@@ -19,7 +19,7 @@
 ```bash
 # 1. Clone the repo
 git clone https://github.com/crazydc/ron-memories.git
-cd ron-memories && git checkout v4-python-core
+cd ron-memories && git checkout main
 
 # 2. Set up Redis credentials
 cat > .env.ron-memory <<'EOF'

@@ -74,7 +74,7 @@ In your new database, click the **Connect** tab. You'll see two things you need:
 # Clone the v4 branch
 git clone https://github.com/crazydc/ron-memories.git
 cd ron-memories
-git checkout v4-python-core
+git checkout main
 ```
 
 No build step. No `pip install`. The Python core uses only the standard library.
@@ -159,7 +159,7 @@ If you see `hello world` — you're done. Welcome to persistent memory. 🎉
 
 > ⚠️ **No cron needed for v4.** v3 used a 5-minute cron for reminders; v4 is a pure read/write library. If you want cron-based reminders, you can set them up using OpenClaw's cron feature, but it's not required for the basic skill.
 
-> 💡 **Upgrading from v3:** Just `git checkout v4-python-core` — your existing data in Upstash works without changes. v3 bash scripts are kept as shims in `scripts_v4_shims/` for backward compat.
+> 💡 **Upgrading from v3:** Just `git checkout main` — your existing data in Upstash works without changes. v3 bash scripts are kept as shims in `scripts_v4_shims/` for backward compat.
 
 ---
 

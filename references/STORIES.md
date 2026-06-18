@@ -11,7 +11,7 @@ Stories are the soul of memory. They transform dry data into something worth rem
 | Fact | Story |
 |------|-------|
 | "Sam's birthday is April 15" | "Sam tried to blow out 5 candles but could only manage 3 — kept trying anyway" |
-| "We went to coast" | "Sam called every castle a 'treasure castle' and made us say it back to him" |
+| "We went to the coast" | "Sam called every castle a 'treasure castle' and made us say it back to him" |
 | "Cooper is a Labrador" | "Cooper learned to catch a frisbee on his 5th birthday — we all cheered like idiots" |
 
 **Facts** answer: *what is it?*
@@ -212,8 +212,8 @@ story:wedding:morgan_shaun:emotional_tags = "joy,family,celebration"
 
 Stories turn memory from a database into a *life*.
 
-A fact tracker knows you went to coast.
-A story tracker knows you went to coast, Sam called castles treasure castles, and you still laugh about it.
+A fact tracker knows you went to the coast.
+A story tracker knows you went to the coast, Sam called castles treasure castles, and you still laugh about it.
 
 **Store the moments. Not just the data.**
 
